@@ -4,6 +4,7 @@ pub mod database;
 use actix_cors::Cors;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::{web, App, HttpServer, };
+use actix_web::middleware::Logger;
 use service::*;
 
 mod model;
@@ -13,22 +14,22 @@ mod config;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    // std::env::set_var("RUST_LOG","info");
-    // std::env::set_var("RUST_BACKTRACE","1");
-    // env_logger::init();
+    std::env::set_var("RUST_LOG","info");
+    std::env::set_var("RUST_BACKTRACE","1");
+    env_logger::init();
     HttpServer::new(|| {
-        // let logger=Logger::default();
+        let logger=Logger::default();
         let cors = Cors::default()
             .allow_any_header()
             .allow_any_method()
             .allow_any_origin()
             .max_age(3600);
         App::new()
-            // .wrap(logger)
+            .wrap(logger)
             .wrap(cors)
             .wrap(IdentityService::new(
                 CookieIdentityPolicy::new(&[0; 32])
-                    .name("auth-cookie")
+                    .name("authorization")
                     .secure(false),
             ))
             .route("/login", web::post().to(user_service::login))
