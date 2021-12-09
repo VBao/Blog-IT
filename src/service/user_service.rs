@@ -1,7 +1,5 @@
-use actix_identity::Identity;
-use actix_web::{web, Error, FromRequest, HttpResponse, Responder};
+use actix_web::{web, HttpResponse, Responder, HttpRequest};
 use actix_web::web::{Json, Path};
-use futures::future::{err, ok, Ready};
 use serde::{Deserialize};
 use crate::database::user;
 use crate::database::post;
@@ -21,33 +19,11 @@ pub struct Logged {
     id: String,
 }
 
-impl FromRequest for Logged {
-    type Error = Error;
-    type Future = Ready<Result<Logged, Error>>;
-    type Config = ();
-
-    fn from_request(
-        req: &actix_web::HttpRequest,
-        payload: &mut actix_web::dev::Payload,
-    ) -> Self::Future {
-        if let Ok(identity) = Identity::from_request(req, payload).into_inner() {
-            if let Some(some_json) = identity.identity() {
-                if let Ok(user) = serde_json::from_str(&some_json) {
-                    return ok(user);
-                }
-            }
-        }
-        err(HttpResponse::Unauthorized().into())
-    }
-}
-
-pub async fn login(acc: web::Json<LoginInfo>, identity: Identity) -> impl Responder {
-    // return HttpResponse::Ok().body(String::from(acc.pwd.to_owned()));
+pub async fn login(acc: web::Json<LoginInfo>) -> impl Responder {
     let usr = acc.username.to_owned();
     let pwd = acc.password.to_owned();
     match user::log_in(usr, pwd).await {
         Ok(id) => {
-            identity.remember(id.id.to_owned().to_string());
             let account = bson::to_bson(&id).unwrap();
             HttpResponse::Ok().json(doc! { "data": account })
         }
@@ -66,8 +42,8 @@ pub async fn users_get() -> impl Responder {
     return HttpResponse::Ok().json(doc! {"data":bson::to_bson(&user::get_users().await).unwrap()});
 }
 
-pub async fn get_user(identity: Identity, username: Path<String>) -> impl Responder {
-    let user_id = match check_login(identity) {
+pub async fn get_user(req: HttpRequest, username: Path<String>) -> impl Responder {
+    let user_id = match check_login(req).await {
         Ok(id) => { Some(id) }
         Err(_) => { None }
     };
@@ -101,8 +77,8 @@ pub async fn get_user(identity: Identity, username: Path<String>) -> impl Respon
     return HttpResponse::Ok().json(doc! {"data":result});
 }
 
-pub async fn get_dashboard(id: Identity) -> impl Responder {
-    return match check_login(id) {
+pub async fn get_dashboard(req: HttpRequest) -> impl Responder {
+    return match check_login(req).await {
         Ok(x) => {
             let mut response = doc! {};
             let user = get_user_by_id(x).await.unwrap();
@@ -125,11 +101,24 @@ pub async fn sign_up(acc: Json<CreateAccount>) -> impl Responder {
     }
 }
 
-pub fn check_login(id: Identity) -> Result<i32, HttpResponse> {
-    match id.identity() {
-        None => { Err(HttpResponse::Unauthorized().json(doc! {"error":"User not login"})) }
-        Some(user_id) => {
-            return Ok(user_id.parse::<i32>().unwrap());
+
+pub async fn check_login(req: HttpRequest) -> Result<i32, HttpResponse> {
+    match req.headers().get("Authorization") {
+        Some(auth) => {
+            let val: Vec<&str> = auth.to_str().unwrap().split("Bearer").collect();
+            let token = val[1].trim();
+            let val = user::auth_get_id(token).await;
+            return match val {
+                Ok(id) => {
+                    Ok(id)
+                }
+                Err(err) => {
+                    Err(HttpResponse::Unauthorized().body(err))
+                }
+            };
+        }
+        None => {
+            Err(HttpResponse::Unauthorized().json(doc! {"error":"User not login"}))
         }
     }
 }

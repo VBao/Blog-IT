@@ -8,7 +8,7 @@ use mongodb::options::{FindOneOptions, FindOptions};
 use rand::distributions::Alphanumeric;
 use rand::{Rng, thread_rng};
 use slug::slugify;
-use crate::config::MONGODB_URL;
+use crate::constant::MONGODB_URL;
 use crate::database::tag;
 use crate::model::post::*;
 use crate::database::user::{connect as connect_user, get_user_by_id};
@@ -431,7 +431,7 @@ pub async fn un_interact_comment(slug: String, id: i32, user_id: i32) {
     }
 }
 
-pub async fn index(user_id: Option<String>, page: i32) -> Vec<Index> {
+pub async fn index(user_id: Option<i32>, page: i32) -> Vec<Index> {
     let col = connection_post().await;
     let find_option = FindOptions::builder().sort(doc! {
             "createdAt":-1,
@@ -444,7 +444,7 @@ pub async fn index(user_id: Option<String>, page: i32) -> Vec<Index> {
     let account = match user_id {
         None => { None }
         Some(x) => {
-            let id = x.parse::<i32>().unwrap();
+            let id = x;
             let user_col = connect_user().await;
             let usr = user_col.find_one(doc! { "_id": id}, None).await.unwrap();
             usr

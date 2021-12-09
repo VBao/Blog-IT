@@ -1,11 +1,13 @@
 use std::borrow::Borrow;
 use std::prelude::rust_2021::Option;
 use argon2::Config;
-use chrono::{Utc};
+use chrono::{Duration, Utc};
 use futures::{TryStreamExt};
+use jsonwebtoken::{Algorithm, decode, DecodingKey, encode, EncodingKey, Header, Validation};
 use mongodb::{bson::{doc}, options::ClientOptions, Client};
 use mongodb::options::{FindOneOptions};
-use crate::config::MONGODB_URL;
+use crate::constant;
+use crate::constant::MONGODB_URL;
 use crate::dto::user_dto::{AccountStore, CreateAccount, ShowAccountAdmin, SmallAccount};
 use crate::model::user::*;
 
@@ -41,28 +43,40 @@ pub async fn get_user_by_id(id: i32) -> Option<Account> {
     }
 }
 
-pub async fn log_in(usr: String, pwd: String) -> Result<AccountStore, ()> {
+pub async fn log_in(usr: String, pwd: String) -> Result<AccountStore, &'static str> {
     let col = connect().await;
     let usr = col.find_one(doc! {"username":usr}, None).await.unwrap();
     match usr {
         Some(info) => {
             let check = argon2::verify_encoded(&info.password.as_ref(), pwd.as_ref()).unwrap();
             if check {
-                Ok(AccountStore::from(info))
+                let key = constant::SECRET_KEY.as_bytes();
+
+                let claim = Claim {
+                    sub: info.id.clone(),
+                    exp: (Utc::now() + Duration::days(365)).timestamp() as usize,
+                };
+                let token = encode(
+                    &Header::default(),
+                    &claim,
+                    &EncodingKey::from_secret(key),
+                ).unwrap();
+                let mut info = AccountStore::from(info);
+                info.token = token;
+                Ok(info)
             } else {
-                return Err(());
+                return Err("Wrong user or password");
             }
         }
-        None => return Err(())
+        None => return Err("Not found user")
     }
 }
-
 pub(crate) async fn get_info(username: String) -> Option<Account> {
     let col = connect().await;
     col.find_one(doc! {"username":username}, None).await.unwrap()
 }
 
-pub async fn sign_up(account: CreateAccount) -> Result<AccountStore, ()> {
+pub async fn sign_up(account: CreateAccount) -> Result<AccountStore, &'static str> {
     let col = connect().await;
     let id = {
         let sort = FindOneOptions::builder().sort(doc! {"_id":-1}).build();
@@ -186,3 +200,20 @@ pub async fn get_user_list_dashboard(user_list: &Vec<i32>)->Vec<SmallAccount>{
     rs
 }
 
+
+pub async fn auth_get_id(token: &str) -> Result<i32, String> {
+    let key = constant::SECRET_KEY.as_bytes();
+    let decode = decode::<Claim>(
+        token,
+        &DecodingKey::from_secret(key),
+        &Validation::new(Algorithm::HS256),
+    );
+    match decode {
+        Ok(decoded) => {
+            Ok(decoded.claims.sub)
+        }
+        Err(_) => {
+            Err("Something wrong here".to_string())
+        }
+    }
+}

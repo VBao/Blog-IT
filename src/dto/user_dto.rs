@@ -18,6 +18,7 @@ pub struct AccountStore {
     pub followed_tag: Vec<i32>,
     #[serde(rename = "readingList")]
     pub reading_list: Vec<i32>,
+    pub token: String,
 }
 
 impl From<Account> for AccountStore {
@@ -34,6 +35,7 @@ impl From<Account> for AccountStore {
             website: info.website,
             followed_tag: info.followed_tag,
             reading_list: info.reading_list,
+            token: "".to_string()
         }
     }
 }

@@ -1,2 +1,0 @@
-pub const MONGODB_URL: &str ="mongodb://admin:Lj6kuxGJh&k8CaN6UgsQF+aDVkQF3Wn7hdSeXke@localhost:27017/";
-// pub const MONGODB_URL: &str ="mongodb+srv://admin:Lj6kuxGJh&k8CaN6UgsQF+aDVkQF3Wn7hdSeXke@cluster0.zk8ne.mongodb.net/myFirstDatabase?retryWrites=true&w=majority";
