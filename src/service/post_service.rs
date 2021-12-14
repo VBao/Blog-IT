@@ -1,6 +1,7 @@
 use std::borrow::Borrow;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use actix_web::web::{Json, Path};
+use log::kv::Source;
 use crate::database::post;
 use mongodb::bson::doc;
 use crate::database::post::find_by_tag;
@@ -17,6 +18,9 @@ pub async fn create_post(id: HttpRequest, post: Json<CreatePost>) -> impl Respon
     return match check_login(id).await {
         Ok(user_id) => {
             let user = user::get_user_by_id(user_id).await.unwrap();
+            if *&post.tag.len().to_owned() as i32 > 3 {
+                return HttpResponse::BadRequest().json(doc! {"msg":"Tag list must not be more than 3 tag"});
+            }
             let result = post::create_post(user, post.0).await;
             HttpResponse::Ok().json(doc! {"data":bson::to_bson(&result).unwrap()})
         }
@@ -27,6 +31,11 @@ pub async fn create_post(id: HttpRequest, post: Json<CreatePost>) -> impl Respon
 pub async fn update_post(id: HttpRequest, post: Json<UpdatePost>) -> impl Responder {
     match check_login(id).await {
         Ok(user_id) => {
+            if post.tag.is_some() {
+                if *&post.tag.as_ref().unwrap().len() > 3 {
+                    return HttpResponse::BadRequest().json(doc! {"msg":"Tag list must not be more than 3 tag"});
+                }
+            }
             let account = user::get_user_by_id(user_id).await.unwrap();
             match post::update_post(account, post.0).await {
                 Ok(x) => {
@@ -82,21 +91,37 @@ pub async fn add_interact(id: HttpRequest, slug_id: Path<String>) -> impl Respon
         Err(err) => { err }
         Ok(user_id) => {
             match post::add_interact(slug_id.0, user_id).await {
-                Err(err) => { match_error(err) }
-                Ok(_) => { return HttpResponse::Ok().finish(); }
+                Err(err) => {
+                    match err {
+                        ErrorMessage::NotFound => { HttpResponse::Ok().json(doc! {"msg":"Not found post with provided slug"}) }
+                        ErrorMessage::Duplicate => { HttpResponse::Ok().json(doc! {"msg":"Already interacted"}) }
+                        ErrorMessage::BadRequest => { HttpResponse::BadRequest().json(doc! {"msg":"Can not interact draft post"}) }
+                        _ => { HttpResponse::InternalServerError().json(doc! {"msg":"Un-process exception"}) }
+                    }
+                }
+                Ok(_) => { return HttpResponse::Ok().json(doc! {"msg":"Add-interact completed"}); }
             }
         }
     }
 }
 
 pub async fn remove_interact(id: HttpRequest, slug_id: Path<String>) -> impl Responder {
-    match check_login(id).await {
+    return match check_login(id).await {
         Ok(user_id) => {
-            post::remove_interact(slug_id.0, user_id).await;
+            match post::remove_interact(slug_id.0, user_id).await {
+                Ok(_) => {
+                    HttpResponse::Ok().json(doc! {"msg":"Un-interact completed"})
+                }
+                Err(err) => {
+                    if err == ErrorMessage::NotFound {
+                        return HttpResponse::BadRequest().json(doc! {"msg":"User not interact before"});
+                    }
+                    HttpResponse::InternalServerError().json(doc! {"msg":"Un-check exception"})
+                }
+            }
         }
-        Err(err) => { return err; }
-    }
-    return HttpResponse::Ok().finish();
+        Err(err) => { err }
+    };
 }
 
 fn match_error(error: ErrorMessage) -> HttpResponse {
@@ -106,6 +131,7 @@ fn match_error(error: ErrorMessage) -> HttpResponse {
         ErrorMessage::Unauthorized => { HttpResponse::Unauthorized().json(doc! {"error":"User not owned this comment"}) }
         ErrorMessage::ServerError => { HttpResponse::InternalServerError().json(doc! {"error":"Please contact backend dev"}) }
         ErrorMessage::Duplicate => { HttpResponse::InternalServerError().json(doc! {"error":"Duplicate request please check again"}) }
+        ErrorMessage::BadRequest => { HttpResponse::BadRequest().json(doc! {"error":"Please re-check input"}) }
     };
 }
 
@@ -146,7 +172,7 @@ pub async fn interact_comment(identity: HttpRequest, web::Path((slug, id)): web:
             HttpResponse::Ok().finish()
         }
         Err(err) => { err }
-    }
+    };
 }
 
 pub async fn un_interact_comment(req: HttpRequest, web::Path((slug, id)): web::Path<(String, i32)>) -> impl Responder {
@@ -155,7 +181,7 @@ pub async fn un_interact_comment(req: HttpRequest, web::Path((slug, id)): web::P
             post::un_interact_comment(slug, id, user_id).await;
             HttpResponse::Ok().finish()
         }
-        Err(err) => {err}
+        Err(err) => { err }
     }
 }
 
@@ -169,7 +195,7 @@ pub async fn index(req: HttpRequest, page: web::Path<i32>) -> impl Responder {
             let rs = post::index(None, page.0).await;
             HttpResponse::Ok().json(doc! {"data":bson::to_bson(&rs).unwrap()})
         }
-    }
+    };
 }
 
 pub async fn add_reading(id: HttpRequest, slug: web::Path<String>) -> impl Responder {

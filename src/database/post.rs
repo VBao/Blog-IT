@@ -2,7 +2,7 @@ use std::borrow::{Borrow};
 use std::option::Option::Some;
 use std::prelude::rust_2021::Option;
 use chrono::{DateTime, Utc};
-use futures::{ TryStreamExt};
+use futures::{TryStreamExt};
 use mongodb::{bson::{doc}, options::ClientOptions, Client, Collection, Cursor};
 use mongodb::options::{FindOneOptions, FindOptions};
 use rand::distributions::Alphanumeric;
@@ -126,20 +126,12 @@ pub async fn update_post(account: Account, update: UpdatePost) -> Result<PostDet
         return Err(ErrorMessage::NotOwned);
     }
 
-    let slug = match update.title {
-        None => { update_post.title.to_owned() }
-        Some(ref title) => {
-            slug_generate(title, &account.username).await
-        }
-    };
-
     update_post.updated_at = date;
     if update.banner.as_ref().is_some() { update_post.banner = update.banner.unwrap(); }
     if update.title.as_ref().is_some() { update_post.title = update.title.unwrap(); }
     if update.content.as_ref().is_some() { update_post.content = update.content.unwrap(); }
     if update.tag.as_ref().is_some() { update_post.tag = update.tag.unwrap(); }
     if update.status.as_ref().is_some() { update_post.status = update.status.unwrap(); }
-    update_post.slug = slug;
 
     match col.replace_one(doc! {"_id":update_post.id}, update_post.borrow(), None).await {
         Ok(_) => {}
@@ -235,44 +227,46 @@ pub async fn update_comment(comment: UpdateComment, account: Account) -> Result<
 }
 
 pub async fn add_interact(slug: String, user_id: i32) -> Result<(), ErrorMessage> {
-    let user_col = connect_user().await;
     let post_col = connection_post().await;
-    let post = post_col.find_one(doc! {"slug":slug.to_string()}, None).await.unwrap().unwrap();
-    let user = user_col.find_one(doc! {"_id":user_id}, None).await.unwrap();
-    match user {
-        None => { return Err(ErrorMessage::NotFound); }
-        Some(u) => {
-            if post.reaction_list.contains(&u.id) {
+    let post_opt = post_col.find_one(doc! {"slug":slug.to_string()}, None).await.unwrap();
+    match post_opt {
+        None => {
+            return Err(ErrorMessage::NotFound);
+        }
+        Some(post) => {
+            if *&post.status == Status::Draft {
+                return Err(ErrorMessage::BadRequest);
+            }
+            if post.reaction_list.contains(&user_id) {
                 return Err(ErrorMessage::Duplicate);
             }
-        }
-    };
-
-    let mut update_post = doc! {
+            let mut update_post = doc! {
         "$set":{
         "reactionCount":post.reaction_count+1
+        }};
+            if !post.reaction_list.contains(&user_id) {
+                update_post.insert("$push", doc! {"reactionList":user_id});
+            }
+            let rs_post = post_col.update_one(doc! {"slug":slug.to_string()}, update_post, None).await;
+            match rs_post {
+                Ok(e) => {
+                    println!("{:?}", e);
+                }
+                Err(err) => {
+                    println!("{:?}", err);
+                }
+            }
+            Ok(())
         }
-    };
-    if !post.reaction_list.contains(&user_id) {
-        update_post.insert("$push", doc! {"reactionList":user_id});
     }
-    let rs_post = post_col.update_one(doc! {"slug":slug.to_string()}, update_post, None).await;
-    match rs_post {
-        Ok(e) => {
-            println!("{:?}", e);
-        }
-        Err(err) => {
-            println!("{:?}", err);
-        }
-    }
-    Ok(())
 }
 
-pub async fn remove_interact(slug: String, user_id: i32) {
-    let user_col = connect_user().await;
+pub async fn remove_interact(slug: String, user_id: i32) -> Result<(), ErrorMessage> {
     let post_col = connection_post().await;
     let post = post_col.find_one(doc! {"slug":slug.to_string()}, None).await.unwrap().unwrap();
-    let mut update_post = doc! {
+    return if post.reaction_list.contains(&user_id) {
+        let user_col = connect_user().await;
+        let mut update_post = doc! {
         "$set":{
         "reactionCount":post.reaction_count-1
         },
@@ -280,18 +274,19 @@ pub async fn remove_interact(slug: String, user_id: i32) {
             "reactionList":user_id
         }
     };
-    if post.reaction_list.contains(&user_id) {
         update_post.insert("$pull", doc! {"reactionList":user_id});
-    }
-    println!("{:?}", post);
-    match post_col.update_one(doc! {"slug":slug}, update_post, None).await {
-        Ok(_) => {}
-        Err(err) => { std::panic::panic_any(err) }
-    }
-    match user_col.update_one(doc! {"_id":user_id}, doc! {"$pull": {"reactionList":post.id}}, None).await {
-        Ok(_) => {}
-        Err(err) => { std::panic::panic_any(err) }
-    }
+        match post_col.update_one(doc! {"slug":slug}, update_post, None).await {
+            Ok(_) => {}
+            Err(err) => { std::panic::panic_any(err) }
+        }
+        match user_col.update_one(doc! {"_id":user_id}, doc! {"$pull": {"reactionList":post.id}}, None).await {
+            Ok(_) => {}
+            Err(err) => { std::panic::panic_any(err) }
+        }
+        Ok(())
+    } else {
+        Err(ErrorMessage::NotFound)
+    };
 }
 
 pub async fn search_post(account: &Option<Account>, keyword: String) -> Vec<Index> {
