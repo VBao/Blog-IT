@@ -203,7 +203,7 @@ pub async fn add_comment(comment: CreateComment, account: Account) -> Post {
 }
 
 
-pub async fn update_comment(comment: UpdateComment, account: Account) -> Result<Post, ErrorMessage> {
+pub async fn update_comment(comment: UpdateComment, account: Account) -> Result<PostDetail, ErrorMessage> {
     let col = connection_post().await;
     let post = col.find_one(doc! {"slug":&comment.slug_post}, None).await.unwrap();
     let now = Utc::now();
@@ -219,11 +219,11 @@ pub async fn update_comment(comment: UpdateComment, account: Account) -> Result<
             break;
         }
     }
-    match col.replace_one(doc! {"comment.id":&comment.id}, &post, None).await {
+    match col.replace_one(doc! {"_id":&post.id}, &post, None).await {
         Ok(_) => {}
         Err(err) => { std::panic::panic_any(err) }
     }
-    Ok(post)
+    Ok(PostDetail::from(post))
 }
 
 pub async fn add_interact(slug: String, user_id: i32) -> Result<(), ErrorMessage> {
@@ -375,16 +375,20 @@ pub async fn search_comment_content_by_username(account: &Option<Account>, usern
     result
 }
 
-pub async fn interact_comment(slug: String, id: i32, user_id: i32) {
+pub async fn interact_comment(slug: String, id: i32, user_id: i32) -> Result<(), ErrorMessage> {
     let post_col = connection_post().await;
     let post = post_col.find_one(doc! {"slug":&slug}, None).await.unwrap().unwrap();
     let mut count = 0;
+
     for com in post.comment.iter() {
         if com.id == id {
+            if com.interact_list.contains(&user_id) {
+                return Err(ErrorMessage::Duplicate);
+            }
             count = com.interact + 1;
         }
     }
-    match post_col.update_one(doc! {
+    return match post_col.update_one(doc! {
         "slug":slug,
         "comment._id":id
     }, doc! {
@@ -392,25 +396,28 @@ pub async fn interact_comment(slug: String, id: i32, user_id: i32) {
             "comment.$.interact":count
         },
         "$push":{
-            "comment.$.reactionList":user_id
+            "comment.$.interactList":user_id
         }
     }, None).await {
-        Ok(_) => {}
-        Err(err) => { std::panic::panic_any(err) }
-    }
+        Ok(_) => { Ok(()) }
+        Err(_) => { Err(ErrorMessage::ServerError) }
+    };
 }
 
-pub async fn un_interact_comment(slug: String, id: i32, user_id: i32) {
+pub async fn un_interact_comment(slug: String, id: i32, user_id: i32) -> Result<(), ErrorMessage> {
     let post_col = connection_post().await;
     let post = post_col.find_one(doc! {"slug":&slug}, None).await.unwrap().unwrap();
     let mut count = 0;
     for com in post.comment.iter() {
         if com.id == id {
+            if !com.interact_list.contains(&user_id) {
+                return Err(ErrorMessage::BadRequest);
+            }
             count = com.interact - 1;
             break;
         }
     }
-    match post_col.update_one(doc! {
+    return match post_col.update_one(doc! {
         "slug":slug,
         "comment._id":id
     }, doc! {
@@ -418,12 +425,12 @@ pub async fn un_interact_comment(slug: String, id: i32, user_id: i32) {
             "comment.$.interact":count
         },
         "$pull":{
-            "comment.$.reactionList":user_id
+            "comment.$.interactList":user_id
         }
     }, None).await {
-        Ok(_) => {}
-        Err(err) => { std::panic::panic_any(err) }
-    }
+        Ok(_) => { return Ok(()); }
+        Err(_) => { Err(ErrorMessage::ServerError) }
+    };
 }
 
 pub async fn index(user_id: Option<i32>, page: i32) -> Vec<Index> {

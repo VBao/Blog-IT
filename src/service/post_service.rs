@@ -168,8 +168,16 @@ pub async fn search(id: HttpRequest, keyword: Path<String>) -> impl Responder {
 pub async fn interact_comment(identity: HttpRequest, web::Path((slug, id)): web::Path<(String, i32)>) -> impl Responder {
     return match check_login(identity).await {
         Ok(user_id) => {
-            post::interact_comment(slug, id, user_id).await;
-            HttpResponse::Ok().finish()
+            return match post::interact_comment(slug, id, user_id).await {
+                Ok(_) => { HttpResponse::Ok().json(doc! {"msg":"Interact completed"}) }
+                Err(err) => {
+                    match err {
+                        ErrorMessage::ServerError => HttpResponse::InternalServerError().json(doc! {"msg":"Can not change"}),
+                        ErrorMessage::Duplicate => HttpResponse::BadRequest().json(doc! {"msg":"Already interacted"}),
+                        _ => { HttpResponse::InternalServerError().json(doc! {"msg":"Un-check exception"}) }
+                    }
+                }
+            };
         }
         Err(err) => { err }
     };
@@ -178,8 +186,16 @@ pub async fn interact_comment(identity: HttpRequest, web::Path((slug, id)): web:
 pub async fn un_interact_comment(req: HttpRequest, web::Path((slug, id)): web::Path<(String, i32)>) -> impl Responder {
     match check_login(req).await {
         Ok(user_id) => {
-            post::un_interact_comment(slug, id, user_id).await;
-            HttpResponse::Ok().finish()
+            return match post::un_interact_comment(slug, id, user_id).await {
+                Ok(_) => { HttpResponse::Ok().json(doc! {"msg":"Un-interact completed"}) }
+                Err(err) => {
+                    match err {
+                        ErrorMessage::ServerError => HttpResponse::InternalServerError().json(doc! {"msg":"Can not change"}),
+                        ErrorMessage::BadRequest => HttpResponse::BadRequest().json(doc! {"msg":"Not found user in interact list"}),
+                        _ => { HttpResponse::InternalServerError().json(doc! {"msg":"Un-check exception"}) }
+                    }
+                }
+            };
         }
         Err(err) => { err }
     }

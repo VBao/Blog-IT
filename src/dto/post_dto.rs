@@ -86,8 +86,10 @@ pub struct CommentDetail {
     #[serde(rename = "userName")]
     pub user_name: String,
     #[serde(rename = "createdAt")]
+    #[serde(with = "bson::serde_helpers::chrono_datetime_as_bson_datetime")]
     pub created_at: chrono::DateTime<chrono::Utc>,
     #[serde(rename = "updatedAt")]
+    #[serde(with = "bson::serde_helpers::chrono_datetime_as_bson_datetime")]
     pub updated_at: chrono::DateTime<chrono::Utc>,
     pub interact: i32,
     #[serde(rename = "parentId")]
