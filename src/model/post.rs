@@ -57,8 +57,6 @@ pub struct Post {
     pub comment_count: i32,
     #[serde(rename = "reactionCount")]
     pub reaction_count: i32,
-    #[serde(rename = "savedCount")]
-    pub saved_count: i32,
     #[serde(rename = "reactionList")]
     pub reaction_list: Vec<i32>,
     #[serde(rename = "commentList")]

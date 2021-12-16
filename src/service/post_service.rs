@@ -1,7 +1,6 @@
 use std::borrow::Borrow;
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use actix_web::web::{Json, Path};
-use log::kv::Source;
 use crate::database::post;
 use mongodb::bson::doc;
 use crate::database::post::find_by_tag;
@@ -86,7 +85,7 @@ pub async fn update_comment(id: HttpRequest, comment: Json<UpdateComment>) -> im
     };
 }
 
-pub async fn add_interact(id: HttpRequest, slug_id: Path<String>) -> impl Responder {
+pub async fn interact(id: HttpRequest, slug_id: Path<String>) -> impl Responder {
     match check_login(id).await {
         Err(err) => { err }
         Ok(user_id) => {
@@ -99,30 +98,12 @@ pub async fn add_interact(id: HttpRequest, slug_id: Path<String>) -> impl Respon
                         _ => { HttpResponse::InternalServerError().json(doc! {"msg":"Un-process exception"}) }
                     }
                 }
-                Ok(_) => { return HttpResponse::Ok().json(doc! {"msg":"Add-interact completed"}); }
+                Ok(data) => { return HttpResponse::Ok().json(doc! {"data":bson::to_bson(&data).unwrap()}); }
             }
         }
     }
 }
 
-pub async fn remove_interact(id: HttpRequest, slug_id: Path<String>) -> impl Responder {
-    return match check_login(id).await {
-        Ok(user_id) => {
-            match post::remove_interact(slug_id.0, user_id).await {
-                Ok(_) => {
-                    HttpResponse::Ok().json(doc! {"msg":"Un-interact completed"})
-                }
-                Err(err) => {
-                    if err == ErrorMessage::NotFound {
-                        return HttpResponse::BadRequest().json(doc! {"msg":"User not interact before"});
-                    }
-                    HttpResponse::InternalServerError().json(doc! {"msg":"Un-check exception"})
-                }
-            }
-        }
-        Err(err) => { err }
-    };
-}
 
 fn match_error(error: ErrorMessage) -> HttpResponse {
     return match error {
@@ -169,7 +150,7 @@ pub async fn interact_comment(identity: HttpRequest, web::Path((slug, id)): web:
     return match check_login(identity).await {
         Ok(user_id) => {
             return match post::interact_comment(slug, id, user_id).await {
-                Ok(_) => { HttpResponse::Ok().json(doc! {"msg":"Interact completed"}) }
+                Ok(data) => { HttpResponse::Ok().json(doc! {"data":bson::to_bson(&data).unwrap()}) }
                 Err(err) => {
                     match err {
                         ErrorMessage::ServerError => HttpResponse::InternalServerError().json(doc! {"msg":"Can not change"}),
@@ -183,23 +164,6 @@ pub async fn interact_comment(identity: HttpRequest, web::Path((slug, id)): web:
     };
 }
 
-pub async fn un_interact_comment(req: HttpRequest, web::Path((slug, id)): web::Path<(String, i32)>) -> impl Responder {
-    match check_login(req).await {
-        Ok(user_id) => {
-            return match post::un_interact_comment(slug, id, user_id).await {
-                Ok(_) => { HttpResponse::Ok().json(doc! {"msg":"Un-interact completed"}) }
-                Err(err) => {
-                    match err {
-                        ErrorMessage::ServerError => HttpResponse::InternalServerError().json(doc! {"msg":"Can not change"}),
-                        ErrorMessage::BadRequest => HttpResponse::BadRequest().json(doc! {"msg":"Not found user in interact list"}),
-                        _ => { HttpResponse::InternalServerError().json(doc! {"msg":"Un-check exception"}) }
-                    }
-                }
-            };
-        }
-        Err(err) => { err }
-    }
-}
 
 pub async fn index(req: HttpRequest, page: web::Path<i32>) -> impl Responder {
     return match check_login(req).await {
@@ -214,11 +178,11 @@ pub async fn index(req: HttpRequest, page: web::Path<i32>) -> impl Responder {
     };
 }
 
-pub async fn add_reading(id: HttpRequest, slug: web::Path<String>) -> impl Responder {
+pub async fn reading(id: HttpRequest, slug: web::Path<String>) -> impl Responder {
     match check_login(id).await {
         Ok(user_id) => {
-            match post::add_reading(get_user_by_id(user_id).await.unwrap(), slug.0).await {
-                Ok(_) => { HttpResponse::Ok().finish() }
+            match post::reading_process(get_user_by_id(user_id).await.unwrap(), slug.0).await {
+                Ok(data) => { HttpResponse::Ok().json(doc! {"data":bson::to_bson(&data).unwrap()}) }
                 Err(err) => { HttpResponse::InternalServerError().json(doc! {"error":err}) }
             }
         }
@@ -226,17 +190,6 @@ pub async fn add_reading(id: HttpRequest, slug: web::Path<String>) -> impl Respo
     }
 }
 
-pub async fn remove_reading(id: HttpRequest, slug: web::Path<String>) -> impl Responder {
-    match check_login(id).await {
-        Ok(user_id) => {
-            match post::remove_reading(get_user_by_id(user_id).await.unwrap(), slug.0).await {
-                Ok(_) => { HttpResponse::Ok().finish() }
-                Err(err) => { HttpResponse::InternalServerError().json(doc! {"error":err}) }
-            }
-        }
-        Err(err) => { return err; }
-    }
-}
 
 pub async fn get_tags(id: HttpRequest) -> impl Responder {
     return match check_login(id).await {

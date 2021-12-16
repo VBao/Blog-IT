@@ -47,16 +47,14 @@ async fn main() -> std::io::Result<()> {
                     .route("/change-status/{slug}", web::get().to(post_service::change_status))
                     .route("/comment", web::post().to(post_service::add_comment))
                     .route("/edit-comment", web::post().to(post_service::update_comment))
-                    .route("/interact/{slug_id}", web::get().to(post_service::add_interact))
-                    .route("/un-interact/{slug_id}", web::get().to(post_service::remove_interact))
-                    .route("/add-reading/{slug_id}", web::get().to(post_service::add_reading))
-                    .route("/remove-reading/{slug_id}", web::get().to(post_service::remove_reading))
+                    .route("/interact/{slug_id}", web::get().to(post_service::interact))
+                    .route("/reading/{slug_id}", web::get().to(post_service::reading))
                     .route("/interact-comment/{slug}/{id}", web::get().to(post_service::interact_comment))
-                    .route("/un-interact-comment/{slug}/{id}", web::get().to(post_service::un_interact_comment))
             ).service(
             web::scope("/admin")
         ).service(
             web::scope("/user")
+                // TODO Follow new user
                 .route("/info/{username}", web::get().to(user_service::get_user))
                 .route("/dashboard", web::get().to(user_service::get_dashboard))
                 .service(

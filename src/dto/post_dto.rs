@@ -155,6 +155,8 @@ pub struct PostDetail {
     pub interact_count: i32,
     #[serde(rename = "commentCount")]
     pub comment_count: i32,
+    #[serde(rename = "savedCount")]
+    pub saved_count: i32,
     pub followed: bool,
     pub interacted: bool,
 }
@@ -181,6 +183,7 @@ impl From<Post> for PostDetail {
             comment: vec_comment,
             interact_count: post.reaction_count,
             comment_count: post.comment_count,
+            saved_count: post.saved_by_user.len() as i32,
             followed: false,
             interacted: false,
         }
