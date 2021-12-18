@@ -3,22 +3,22 @@ pub mod database;
 
 use actix_cors::Cors;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
-use actix_web::{web, App, HttpServer, };
+use actix_web::{web, App, HttpServer};
 use actix_web::middleware::Logger;
 use service::*;
 
 mod model;
 mod error;
 mod dto;
-mod config;
+mod constant;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    std::env::set_var("RUST_LOG","info");
-    std::env::set_var("RUST_BACKTRACE","1");
+    std::env::set_var("RUST_LOG", "info");
+    std::env::set_var("RUST_BACKTRACE", "1");
     env_logger::init();
     HttpServer::new(|| {
-        let logger=Logger::default();
+        let logger = Logger::default();
         let cors = Cors::default()
             .allow_any_header()
             .allow_any_method()
@@ -41,21 +41,20 @@ async fn main() -> std::io::Result<()> {
                 web::scope("/post")
                     .route("/detail/{slug}", web::get().to(post_service::get_post))
                     .route("/tags", web::get().to(post_service::get_tags))
-                    .route("/tag/{value}", web::get().to(post_service::get_tag)).route("/create", web::post().to(post_service::create_post))
+                    .route("/tag/{value}", web::get().to(post_service::get_tag))
+                    .route("/create", web::post().to(post_service::create_post))
                     .route("/update", web::post().to(post_service::update_post))
                     .route("/change-status/{slug}", web::get().to(post_service::change_status))
                     .route("/comment", web::post().to(post_service::add_comment))
                     .route("/edit-comment", web::post().to(post_service::update_comment))
-                    .route("/interact/{slug_id}", web::get().to(post_service::add_interact))
-                    .route("/un-interact/{slug_id}", web::get().to(post_service::remove_interact))
-                    .route("/add-reading/{slug_id}", web::get().to(post_service::add_reading))
-                    .route("/remove-reading/{slug_id}", web::get().to(post_service::remove_reading))
+                    .route("/interact/{slug_id}", web::get().to(post_service::interact))
+                    .route("/reading/{slug_id}", web::get().to(post_service::reading))
                     .route("/interact-comment/{slug}/{id}", web::get().to(post_service::interact_comment))
-                    .route("/un-interact-comment/{slug}/{id}", web::get().to(post_service::un_interact_comment))
             ).service(
             web::scope("/admin")
         ).service(
             web::scope("/user")
+                // TODO Follow new user
                 .route("/info/{username}", web::get().to(user_service::get_user))
                 .route("/dashboard", web::get().to(user_service::get_dashboard))
                 .service(

@@ -14,10 +14,7 @@ pub struct AccountStore {
     pub avatar: String,
     pub admin: bool,
     pub website: String,
-    #[serde(rename = "followedTag")]
-    pub followed_tag: Vec<i32>,
-    #[serde(rename = "readingList")]
-    pub reading_list: Vec<i32>,
+    pub token: String,
 }
 
 impl From<Account> for AccountStore {
@@ -32,8 +29,7 @@ impl From<Account> for AccountStore {
             avatar: info.avatar,
             admin: info.admin,
             website: info.website,
-            followed_tag: info.followed_tag,
-            reading_list: info.reading_list,
+            token: "".to_string(),
         }
     }
 }
@@ -82,19 +78,19 @@ pub struct UserPage {
     pub website: String,
     #[serde(rename = "createdAt")]
     pub created_at: chrono::DateTime<chrono::Utc>,
-    pub followed: bool
+    pub followed: bool,
 }
 
 impl From<Account> for UserPage {
     fn from(acc: Account) -> Self {
-        UserPage{
+        UserPage {
             name: acc.name,
             username: acc.username,
             bio: acc.bio,
             avatar: acc.avatar,
             website: acc.website,
             created_at: acc.created_at,
-            followed: false
+            followed: false,
         }
     }
 }

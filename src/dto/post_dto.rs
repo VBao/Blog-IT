@@ -6,7 +6,7 @@ pub struct CreatePost {
     pub banner: String,
     pub title: String,
     pub content: String,
-    pub tag: [String; 3],
+    pub tag: Vec<String>,
     pub status: Status,
 }
 
@@ -16,7 +16,7 @@ pub struct UpdatePost {
     pub banner: Option<String>,
     pub title: Option<String>,
     pub content: Option<String>,
-    pub tag: Option<[String; 3]>,
+    pub tag: Option<Vec<String>>,
     pub status: Option<Status>,
 }
 
@@ -54,7 +54,7 @@ pub struct Index {
     pub updated_at: chrono::DateTime<chrono::Utc>,
     pub status: Status,
     #[serde(rename = "tagList")]
-    pub tag_list: [String; 3],
+    pub tag_list: Vec<String>,
     #[serde(rename = "commentCount")]
     pub comment_count: i32,
     #[serde(rename = "reactionCount")]
@@ -86,8 +86,10 @@ pub struct CommentDetail {
     #[serde(rename = "userName")]
     pub user_name: String,
     #[serde(rename = "createdAt")]
+    #[serde(with = "bson::serde_helpers::chrono_datetime_as_bson_datetime")]
     pub created_at: chrono::DateTime<chrono::Utc>,
     #[serde(rename = "updatedAt")]
+    #[serde(with = "bson::serde_helpers::chrono_datetime_as_bson_datetime")]
     pub updated_at: chrono::DateTime<chrono::Utc>,
     pub interact: i32,
     #[serde(rename = "parentId")]
@@ -147,28 +149,41 @@ pub struct PostDetail {
     #[serde(rename = "updatedAt")]
     pub updated_at: chrono::DateTime<chrono::Utc>,
     pub status: Status,
-    pub tag: [String; 3],
+    pub tag: Vec<String>,
     pub comment: Vec<PostDetailComment>,
+    #[serde(rename = "interactCount")]
+    pub interact_count: i32,
+    #[serde(rename = "commentCount")]
+    pub comment_count: i32,
+    #[serde(rename = "savedCount")]
+    pub saved_count: i32,
     pub followed: bool,
     pub interacted: bool,
 }
 
 impl From<Post> for PostDetail {
-    fn from(p: Post) -> Self {
+    fn from(post: Post) -> Self {
+        let mut vec_comment: Vec<PostDetailComment> = Vec::new();
+        for p in post.comment.to_owned() {
+            vec_comment.push(PostDetailComment::from(p))
+        }
         PostDetail {
-            id: p.id,
-            user_username: p.user_username,
-            user_avatar: p.user_avatar,
-            user_name: p.user_name,
-            slug: p.slug,
-            banner: p.banner,
-            title: p.title,
-            content: p.content,
-            created_at: p.created_at,
-            updated_at: p.updated_at,
-            status: p.status,
-            tag: p.tag,
-            comment: vec![],
+            id: post.id,
+            user_username: post.user_username,
+            user_avatar: post.user_avatar,
+            user_name: post.user_name,
+            slug: post.slug,
+            banner: post.banner,
+            title: post.title,
+            content: post.content,
+            created_at: post.created_at,
+            updated_at: post.updated_at,
+            status: post.status,
+            tag: post.tag,
+            comment: vec_comment,
+            interact_count: post.reaction_count,
+            comment_count: post.comment_count,
+            saved_count: post.saved_by_user.len() as i32,
             followed: false,
             interacted: false,
         }

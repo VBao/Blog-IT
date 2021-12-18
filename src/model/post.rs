@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub enum Status {
     Published,
     Draft,
@@ -30,7 +30,7 @@ pub struct Comment {
     pub interact_list: Vec<i32>,
 }
 
-#[derive(Serialize, Deserialize,Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Post {
     #[serde(rename = "_id")]
     pub id: i32,
@@ -51,14 +51,12 @@ pub struct Post {
     #[serde(rename = "updatedAt")]
     pub updated_at: chrono::DateTime<chrono::Utc>,
     pub status: Status,
-    pub tag: [String; 3],
+    pub tag: Vec<String>,
     pub comment: Vec<Comment>,
     #[serde(rename = "commentCount")]
     pub comment_count: i32,
     #[serde(rename = "reactionCount")]
     pub reaction_count: i32,
-    #[serde(rename = "savedCount")]
-    pub saved_count: i32,
     #[serde(rename = "reactionList")]
     pub reaction_list: Vec<i32>,
     #[serde(rename = "commentList")]

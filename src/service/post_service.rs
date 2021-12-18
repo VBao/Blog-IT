@@ -1,6 +1,5 @@
 use std::borrow::Borrow;
-use actix_identity::Identity;
-use actix_web::{HttpResponse, Responder, web};
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use actix_web::web::{Json, Path};
 use crate::database::post;
 use mongodb::bson::doc;
@@ -14,10 +13,13 @@ use crate::dto::user_dto::SmallAccount;
 use crate::model::user::Account;
 use crate::service::user_service::check_login;
 
-pub async fn create_post(id: Identity, post: Json<CreatePost>) -> impl Responder {
-    return match check_login(id) {
+pub async fn create_post(id: HttpRequest, post: Json<CreatePost>) -> impl Responder {
+    return match check_login(id).await {
         Ok(user_id) => {
             let user = user::get_user_by_id(user_id).await.unwrap();
+            if *&post.tag.len().to_owned() as i32 > 3 {
+                return HttpResponse::BadRequest().json(doc! {"msg":"Tag list must not be more than 3 tag"});
+            }
             let result = post::create_post(user, post.0).await;
             HttpResponse::Ok().json(doc! {"data":bson::to_bson(&result).unwrap()})
         }
@@ -25,9 +27,14 @@ pub async fn create_post(id: Identity, post: Json<CreatePost>) -> impl Responder
     };
 }
 
-pub async fn update_post(id: Identity, post: Json<UpdatePost>) -> impl Responder {
-    match check_login(id) {
+pub async fn update_post(id: HttpRequest, post: Json<UpdatePost>) -> impl Responder {
+    match check_login(id).await {
         Ok(user_id) => {
+            if post.tag.is_some() {
+                if *&post.tag.as_ref().unwrap().len() > 3 {
+                    return HttpResponse::BadRequest().json(doc! {"msg":"Tag list must not be more than 3 tag"});
+                }
+            }
             let account = user::get_user_by_id(user_id).await.unwrap();
             match post::update_post(account, post.0).await {
                 Ok(x) => {
@@ -41,8 +48,8 @@ pub async fn update_post(id: Identity, post: Json<UpdatePost>) -> impl Responder
 }
 
 
-pub async fn change_status(id: Identity, slug: Path<String>) -> impl Responder {
-    return match check_login(id) {
+pub async fn change_status(id: HttpRequest, slug: Path<String>) -> impl Responder {
+    return match check_login(id).await {
         Ok(user_id) => {
             match post::change_status(user::get_user_by_id(user_id).await.unwrap(), slug.0).await {
                 Ok(_) => { HttpResponse::Ok().finish() }
@@ -53,16 +60,18 @@ pub async fn change_status(id: Identity, slug: Path<String>) -> impl Responder {
     };
 }
 
-pub async fn add_comment(id: Identity, comment: Json<CreateComment>) -> impl Responder {
-    if id.identity().is_none() {
-        return HttpResponse::Unauthorized().json(doc! {"error":"user not login"});
+pub async fn add_comment(id: HttpRequest, comment: Json<CreateComment>) -> impl Responder {
+    match check_login(id).await {
+        Ok(user_id) => {
+            post::add_comment(comment.0, user::get_user_by_id(user_id).await.unwrap()).await;
+            HttpResponse::Ok().finish()
+        }
+        Err(err) => { err }
     }
-    post::add_comment(comment.0, user::get_user_by_id(id.identity().unwrap().parse::<i32>().unwrap()).await.unwrap()).await;
-    return HttpResponse::Ok().finish();
 }
 
-pub async fn update_comment(id: Identity, comment: Json<UpdateComment>) -> impl Responder {
-    return match check_login(id) {
+pub async fn update_comment(id: HttpRequest, comment: Json<UpdateComment>) -> impl Responder {
+    return match check_login(id).await {
         Ok(user_id) => {
             let rs = post::update_comment(comment.0, user::get_user_by_id(user_id).await.unwrap()).await;
             match rs {
@@ -76,28 +85,25 @@ pub async fn update_comment(id: Identity, comment: Json<UpdateComment>) -> impl 
     };
 }
 
-pub async fn add_interact(id: Identity, slug_id: Path<String>) -> impl Responder {
-    match id.identity() {
-        None => { return HttpResponse::Unauthorized().json(doc! {"error":"user not login"}); }
-        Some(user_id) => {
-            match post::add_interact(slug_id.0, user_id.parse::<i32>().unwrap()).await {
-                Err(err) => { match_error(err); }
-                Ok(_) => { return HttpResponse::Ok().finish(); }
+pub async fn interact(id: HttpRequest, slug_id: Path<String>) -> impl Responder {
+    match check_login(id).await {
+        Err(err) => { err }
+        Ok(user_id) => {
+            match post::add_interact(slug_id.0, user_id).await {
+                Err(err) => {
+                    match err {
+                        ErrorMessage::NotFound => { HttpResponse::Ok().json(doc! {"msg":"Not found post with provided slug"}) }
+                        ErrorMessage::Duplicate => { HttpResponse::Ok().json(doc! {"msg":"Already interacted"}) }
+                        ErrorMessage::BadRequest => { HttpResponse::BadRequest().json(doc! {"msg":"Can not interact draft post"}) }
+                        _ => { HttpResponse::InternalServerError().json(doc! {"msg":"Un-process exception"}) }
+                    }
+                }
+                Ok(data) => { return HttpResponse::Ok().json(doc! {"data":bson::to_bson(&data).unwrap()}); }
             }
         }
     }
-    return HttpResponse::Ok().finish();
 }
 
-pub async fn remove_interact(id: Identity, slug_id: Path<String>) -> impl Responder {
-    match check_login(id) {
-        Ok(user_id) => {
-            post::remove_interact(slug_id.0, user_id).await;
-        }
-        Err(err) => { return err; }
-    }
-    return HttpResponse::Ok().finish();
-}
 
 fn match_error(error: ErrorMessage) -> HttpResponse {
     return match error {
@@ -106,11 +112,12 @@ fn match_error(error: ErrorMessage) -> HttpResponse {
         ErrorMessage::Unauthorized => { HttpResponse::Unauthorized().json(doc! {"error":"User not owned this comment"}) }
         ErrorMessage::ServerError => { HttpResponse::InternalServerError().json(doc! {"error":"Please contact backend dev"}) }
         ErrorMessage::Duplicate => { HttpResponse::InternalServerError().json(doc! {"error":"Duplicate request please check again"}) }
+        ErrorMessage::BadRequest => { HttpResponse::BadRequest().json(doc! {"error":"Please re-check input"}) }
     };
 }
 
-pub async fn search(id: Identity, keyword: Path<String>) -> impl Responder {
-    let user: Option<Account> = match check_login(id) {
+pub async fn search(id: HttpRequest, keyword: Path<String>) -> impl Responder {
+    let user: Option<Account> = match check_login(id).await {
         Ok(id) => { get_user_by_id(id).await }
         Err(_) => { None }
     };
@@ -139,32 +146,43 @@ pub async fn search(id: Identity, keyword: Path<String>) -> impl Responder {
     return HttpResponse::Ok().json(doc! {"data":result});
 }
 
-pub async fn interact_comment(identity: Identity, web::Path((slug, id)): web::Path<(String, i32)>) -> impl Responder {
-    match check_login(identity) {
+pub async fn interact_comment(identity: HttpRequest, web::Path((slug, id)): web::Path<(String, i32)>) -> impl Responder {
+    return match check_login(identity).await {
         Ok(user_id) => {
-            post::interact_comment(slug, id, user_id).await;
-            return HttpResponse::Ok().finish();
+            return match post::interact_comment(slug, id, user_id).await {
+                Ok(data) => { HttpResponse::Ok().json(doc! {"data":bson::to_bson(&data).unwrap()}) }
+                Err(err) => {
+                    match err {
+                        ErrorMessage::ServerError => HttpResponse::InternalServerError().json(doc! {"msg":"Can not change"}),
+                        ErrorMessage::Duplicate => HttpResponse::BadRequest().json(doc! {"msg":"Already interacted"}),
+                        _ => { HttpResponse::InternalServerError().json(doc! {"msg":"Un-check exception"}) }
+                    }
+                }
+            };
         }
-        Err(err) => { return err; }
-    }
+        Err(err) => { err }
+    };
 }
 
-pub async fn un_interact_comment(identity: Identity, web::Path((slug, id)): web::Path<(String, i32)>) -> impl Responder {
-    let user_id: i32 = identity.identity().unwrap().parse::<i32>().unwrap();
-    post::un_interact_comment(slug, id, user_id).await;
-    HttpResponse::Ok()
-}
 
-pub async fn index(identity: Identity, page: web::Path<i32>) -> impl Responder {
-    let rs = post::index(identity.identity(), page.0).await;
-    return HttpResponse::Ok().json(doc! {"data":bson::to_bson(&rs).unwrap()});
-}
-
-pub async fn add_reading(id: Identity, slug: web::Path<String>) -> impl Responder {
-    match check_login(id) {
+pub async fn index(req: HttpRequest, page: web::Path<i32>) -> impl Responder {
+    return match check_login(req).await {
         Ok(user_id) => {
-            match post::add_reading(get_user_by_id(user_id).await.unwrap(), slug.0).await {
-                Ok(_) => { HttpResponse::Ok().finish() }
+            let rs = post::index(Some(user_id), page.0).await;
+            HttpResponse::Ok().json(doc! {"data":bson::to_bson(&rs).unwrap()})
+        }
+        Err(_) => {
+            let rs = post::index(None, page.0).await;
+            HttpResponse::Ok().json(doc! {"data":bson::to_bson(&rs).unwrap()})
+        }
+    };
+}
+
+pub async fn reading(id: HttpRequest, slug: web::Path<String>) -> impl Responder {
+    match check_login(id).await {
+        Ok(user_id) => {
+            match post::reading_process(get_user_by_id(user_id).await.unwrap(), slug.0).await {
+                Ok(data) => { HttpResponse::Ok().json(doc! {"data":bson::to_bson(&data).unwrap()}) }
                 Err(err) => { HttpResponse::InternalServerError().json(doc! {"error":err}) }
             }
         }
@@ -172,20 +190,9 @@ pub async fn add_reading(id: Identity, slug: web::Path<String>) -> impl Responde
     }
 }
 
-pub async fn remove_reading(id: Identity, slug: web::Path<String>) -> impl Responder {
-    match check_login(id) {
-        Ok(user_id) => {
-            match post::remove_reading(get_user_by_id(user_id).await.unwrap(), slug.0).await {
-                Ok(_) => { HttpResponse::Ok().finish() }
-                Err(err) => { HttpResponse::InternalServerError().json(doc! {"error":err}) }
-            }
-        }
-        Err(err) => { return err; }
-    }
-}
 
-pub async fn get_tags(id: Identity) -> impl Responder {
-    return match check_login(id) {
+pub async fn get_tags(id: HttpRequest) -> impl Responder {
+    return match check_login(id).await {
         Ok(id) => {
             let rs = tag::get_tags(Some(id)).await;
             HttpResponse::Ok().json(doc! {"data":bson::to_bson(&rs).unwrap()})
@@ -197,8 +204,8 @@ pub async fn get_tags(id: Identity) -> impl Responder {
     };
 }
 
-pub async fn get_tag(id: Identity, value: Path<String>) -> impl Responder {
-    let user_id: Option<i32> = match check_login(id) {
+pub async fn get_tag(id: HttpRequest, value: Path<String>) -> impl Responder {
+    let user_id: Option<i32> = match check_login(id).await {
         Ok(id) => { Some(id) }
         Err(_) => { None }
     };
@@ -226,8 +233,8 @@ pub async fn get_tag(id: Identity, value: Path<String>) -> impl Responder {
     };
 }
 
-pub async fn get_post(id: Identity, slug: Path<String>) -> impl Responder {
-    let user_id = match check_login(id) {
+pub async fn get_post(id: HttpRequest, slug: Path<String>) -> impl Responder {
+    let user_id = match check_login(id).await {
         Ok(x) => { Some(x) }
         Err(_) => { None }
     };

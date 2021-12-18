@@ -41,3 +41,8 @@ pub struct Account {
 }
 
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Claim {
+    pub sub: i32,
+    pub exp: usize,
+}
