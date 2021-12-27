@@ -59,7 +59,6 @@ impl From<Account> for ShowAccountAdmin {
 
 #[derive(Deserialize, Serialize)]
 pub struct CreateAccount {
-    pub id: Option<i32>,
     pub name: String,
     pub username: String,
     pub school_email: String,

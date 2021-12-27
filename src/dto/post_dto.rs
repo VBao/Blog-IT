@@ -3,7 +3,7 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct CreatePost {
-    pub banner: String,
+    pub banner: Option<String>,
     pub title: String,
     pub content: String,
     pub tag: Vec<String>,
@@ -141,7 +141,7 @@ pub struct PostDetail {
     #[serde(rename = "userName")]
     pub user_name: String,
     pub slug: String,
-    pub banner: String,
+    pub banner: Option<String>,
     pub title: String,
     pub content: String,
     #[serde(rename = "createdAt")]

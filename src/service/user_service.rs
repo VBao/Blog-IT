@@ -96,7 +96,7 @@ pub async fn get_dashboard(req: HttpRequest) -> impl Responder {
 
 pub async fn sign_up(acc: Json<CreateAccount>) -> impl Responder {
     match user::sign_up(acc.0).await {
-        Ok(e) => HttpResponse::Created().json(e),
+        Ok(e) => HttpResponse::Created().json(doc! {"data":bson::to_bson(&e).unwrap()}),
         Err(_) => HttpResponse::BadRequest().finish()
     }
 }

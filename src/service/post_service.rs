@@ -251,3 +251,22 @@ pub async fn get_post(id: HttpRequest, slug: Path<String>) -> impl Responder {
         }
     };
 }
+
+pub async fn save_post(req: HttpRequest, slug: Path<String>) -> impl Responder {
+    return match check_login(req).await {
+        Ok(user_id) => {
+            match post::toggle_save_post(user_id, slug.0).await {
+                Ok(data) => {
+                    HttpResponse::Ok().json(doc! {"data":bson::to_bson(&data).unwrap()})
+                }
+                Err(err) => {
+                    return match err {
+                        ErrorMessage::NotFound => { HttpResponse::NotFound().json(doc! {"msg":"post not found"}) }
+                        _ => { HttpResponse::InternalServerError().json(doc! {"msg":"uncheck exception"}) }
+                    };
+                }
+            }
+        }
+        Err(err) => { err }
+    };
+}
