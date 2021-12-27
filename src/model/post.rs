@@ -41,7 +41,7 @@ pub struct Post {
     #[serde(rename = "userName")]
     pub user_name: String,
     pub slug: String,
-    pub banner: String,
+    pub banner: Option<String>,
     pub title: String,
     pub content: String,
     #[serde(rename = "createdAt")]

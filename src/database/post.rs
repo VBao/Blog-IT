@@ -93,7 +93,7 @@ pub async fn create_post(account: Account, create: CreatePost) -> PostDetail {
         user_avatar: account.avatar,
         user_name: account.name,
         slug,
-        banner: create.banner.to_string(),
+        banner: create.banner,
         title: create.title.to_string(),
         content: create.content.to_string(),
         created_at: now.into(),
@@ -127,7 +127,7 @@ pub async fn update_post(account: Account, update: UpdatePost) -> Result<PostDet
     }
 
     update_post.updated_at = date;
-    if update.banner.as_ref().is_some() { update_post.banner = update.banner.unwrap(); }
+    if update.banner.as_ref().is_some() { update_post.banner = update.banner; }
     if update.title.as_ref().is_some() { update_post.title = update.title.unwrap(); }
     if update.content.as_ref().is_some() { update_post.content = update.content.unwrap(); }
     if update.tag.as_ref().is_some() { update_post.tag = update.tag.unwrap(); }
@@ -625,4 +625,26 @@ pub async fn get_post(user_id: Option<&i32>, slug: String) -> Result<PostDetail,
             Ok(result)
         }
     }
+}
+
+pub async fn toggle_save_post(user_id: i32, slug: String) -> Result<PostDetail, ErrorMessage> {
+    let post_col = connection_post().await;
+    let user_col = connect_user().await;
+    let user = user_col.find_one(doc! {"_id":&user_id}, None).await.unwrap().unwrap();
+
+    let post = match post_col.find_one(doc! {"slug":&slug}, None).await.unwrap() {
+        None => { return Err(ErrorMessage::NotFound); }
+        Some(post) => { post }
+    };
+
+    if post.saved_by_user.contains(&user_id) {
+        let rs=post_col.update_one(doc! {"slug":slug}, doc! {"$pull":{"savedByUser":user_id}}, None).await.unwrap();
+        // log::
+        user_col.update_one(doc! {"_id":user_id}, doc! {"$pull":{"readingList":post.id}}, None).await;
+    } else {
+        post_col.update_one(doc! {"slug":slug}, doc! {"$push":{"savedByUser":user_id}}, None).await;
+        user_col.update_one(doc! {"_id":user_id}, doc! {"$push":{"readingList":post.id}}, None).await;
+    }
+    let result_post = post_col.find_one(doc! {"_id":post.id}, None).await.unwrap().unwrap();
+    return Ok(PostDetail::from(result_post));
 }

@@ -50,6 +50,7 @@ async fn main() -> std::io::Result<()> {
                     .route("/interact/{slug_id}", web::get().to(post_service::interact))
                     .route("/reading/{slug_id}", web::get().to(post_service::reading))
                     .route("/interact-comment/{slug}/{id}", web::get().to(post_service::interact_comment))
+                    .route("/save-post/{slug}", web::get().to(post_service::save_post))
             ).service(
             web::scope("/admin")
         ).service(
