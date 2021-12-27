@@ -10,6 +10,7 @@ use crate::database::tag;
 use crate::error::ErrorMessage;
 use crate::dto::post_dto::*;
 use crate::dto::user_dto::SmallAccount;
+use crate::model::post::Post;
 use crate::model::user::Account;
 use crate::service::user_service::check_login;
 
@@ -63,8 +64,18 @@ pub async fn change_status(id: HttpRequest, slug: Path<String>) -> impl Responde
 pub async fn add_comment(id: HttpRequest, comment: Json<CreateComment>) -> impl Responder {
     match check_login(id).await {
         Ok(user_id) => {
-            post::add_comment(comment.0, user::get_user_by_id(user_id).await.unwrap()).await;
-            HttpResponse::Ok().finish()
+            match post::add_comment(comment.0, user::get_user_by_id(user_id).await.unwrap()).await {
+                Ok(post) => {
+                    let mut res = doc! {};
+                    let post_res = bson::to_bson(&post).unwrap();
+                    res.insert("data", &post_res);
+                    res.insert("msg", "created comment");
+                    HttpResponse::Ok().json(res)
+                }
+                Err(err) => {
+                    HttpResponse::NotFound().json(doc! {"msg":&err})
+                }
+            }
         }
         Err(err) => { err }
     }

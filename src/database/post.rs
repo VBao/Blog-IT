@@ -167,16 +167,34 @@ pub async fn change_status(author: Account, slug: String) -> Result<Post, ErrorM
     }
 }
 
-pub async fn add_comment(comment: CreateComment, account: Account) -> Post {
+pub async fn add_comment(comment: CreateComment, account: Account) -> Result<Post, String> {
     let col = connection_post().await;
-    let mut post = col.find_one(doc! {"slug":&comment.slug}, None).await.unwrap().unwrap();
+    let mut post = match col.find_one(doc! {"slug":&comment.slug}, None).await.unwrap() {
+        None => { return Err("Post not found".to_string()); }
+        Some(p) => { p }
+    };
     let mut last_id = 1;
     let now = Utc::now();
     if !post.comment.is_empty() {
-        for comment in post.comment.iter() {
-            if comment.id >= last_id { last_id = comment.id };
+        let mut check = false;
+        if comment.parent_id != 0 {
+            for comment_iter in post.comment.iter() {
+                if &comment_iter.id == &comment.parent_id {
+                    check = true;
+                    break;
+                }
+            }
+        } else {
+            check = true;
         }
-        last_id += 1;
+        if check {
+            for comment_iter in post.comment.iter() {
+                if comment_iter.id >= last_id { last_id = comment_iter.id };
+            }
+            last_id += 1;
+        } else {
+            return Err("Not found parent-comment with provided id".to_string());
+        }
     }
     let post_comment = Comment {
         id: last_id,
@@ -199,7 +217,7 @@ pub async fn add_comment(comment: CreateComment, account: Account) -> Post {
         Ok(_) => {}
         Err(err) => { std::panic::panic_any(err) }
     }
-    col.find_one(doc! {"slug":&comment.slug}, None).await.unwrap().unwrap()
+    Ok(col.find_one(doc! {"slug":&comment.slug}, None).await.unwrap().unwrap())
 }
 
 
