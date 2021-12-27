@@ -74,7 +74,7 @@ async fn map_index(mut cursor: Cursor<Post>, account: &Option<Account>) -> Vec<I
 }
 
 pub async fn connection_tag() -> Collection<Tag> {
-    let mut conn = ClientOptions::parse("mongodb://admin:ChiBao07032001@localhost:27017/").await.unwrap();
+    let mut conn = ClientOptions::parse(MONGODB_URL).await.unwrap();
     conn.app_name = Some("My App".to_string());
     let client = Client::with_options(conn).unwrap();
     let db = client.database("test");
@@ -638,7 +638,7 @@ pub async fn toggle_save_post(user_id: i32, slug: String) -> Result<PostDetail, 
     };
 
     if post.saved_by_user.contains(&user_id) {
-        let rs=post_col.update_one(doc! {"slug":slug}, doc! {"$pull":{"savedByUser":user_id}}, None).await.unwrap();
+        let rs = post_col.update_one(doc! {"slug":slug}, doc! {"$pull":{"savedByUser":user_id}}, None).await.unwrap();
         // log::
         user_col.update_one(doc! {"_id":user_id}, doc! {"$pull":{"readingList":post.id}}, None).await;
     } else {
@@ -647,4 +647,22 @@ pub async fn toggle_save_post(user_id: i32, slug: String) -> Result<PostDetail, 
     }
     let result_post = post_col.find_one(doc! {"_id":post.id}, None).await.unwrap().unwrap();
     return Ok(PostDetail::from(result_post));
+}
+
+pub async fn toggle_follow_tag(user_id: i32, tag_val: String) -> Result<(), ErrorMessage> {
+    let tag_col = connection_tag().await;
+    let user_col = connect_user().await;
+    let tag = match tag_col.find_one(doc! {"value":tag_val}, None).await.unwrap() {
+        None => { return Err(ErrorMessage::NotFound); }
+        Some(value) => { value }
+    };
+
+    match user_col.find_one(doc! {"$and":[
+        {"_id":&user_id},
+        {"followedTag":{"$in":[&tag.id]}}
+    ]}, None).await.unwrap() {
+        None => { user_col.update_one(doc! {"_id":&user_id}, doc! {"$push":{"followedTag":&tag.id}}, None).await; }
+        Some(_) => { user_col.update_one(doc! {"_id":&user_id}, doc! {"$pull":{"followedTag":&tag.id}}, None).await; }
+    }
+    return Ok(());
 }

@@ -270,3 +270,20 @@ pub async fn save_post(req: HttpRequest, slug: Path<String>) -> impl Responder {
         Err(err) => { err }
     };
 }
+
+pub async fn follow_tag(req: HttpRequest, tag: Path<String>) -> impl Responder {
+    return match check_login(req).await {
+        Ok(id) => {
+            match post::toggle_follow_tag(id, tag.0).await {
+                Ok(_) => { return HttpResponse::Ok().json(doc! {"msg":"follow/unfollow tag success"}); }
+                Err(err) => {
+                    match err {
+                        ErrorMessage::NotFound => { return HttpResponse::NotFound().json(doc! {"msg":"tag not found"}); }
+                        _ => { return HttpResponse::InternalServerError().json(doc! { "msg": "uncheck exception" }); }
+                    }
+                }
+            }
+        }
+        Err(err) => { err }
+    };
+}
