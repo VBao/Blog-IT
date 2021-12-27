@@ -54,18 +54,18 @@ async fn main() -> std::io::Result<()> {
                     .route("/save-post/{slug}", web::get().to(post_service::save_post))
                     .route("/follow-tag/{tag}", web::get().to(post_service::follow_tag))
             ).service(
-            web::scope("/admin")
-        ).service(
             web::scope("/user")
                 // TODO Follow new user
                 .route("/info/{username}", web::get().to(user_service::get_user))
-                .route("/dashboard", web::get().to(user_service::get_dashboard))
-                .service(
-                    web::scope("admin")
-                        .route("/posts", web::get().to(post_service::posts_get))
-                        .route("/users", web::get().to(user_service::users_get))
-                )
-        )
+                .route("/dashboard", web::get().to(user_service::get_dashboard)))
+            .service(
+                web::scope("admin")
+                    .route("/posts", web::get().to(post_service::posts_get))
+                    .route("/users", web::get().to(user_service::users_get))
+                    .route("/tags", web::get().to(tag_service::get_tags_admin))
+                    .route("/update-tag", web::post().to(tag_service::update_tag))
+                    .route("/create-tag", web::post().to(tag_service::create_tag))
+            )
     })
         .bind("0.0.0.0:8040")?
         .run()

@@ -10,7 +10,6 @@ use crate::database::tag;
 use crate::error::ErrorMessage;
 use crate::dto::post_dto::*;
 use crate::dto::user_dto::SmallAccount;
-use crate::model::post::Post;
 use crate::model::user::Account;
 use crate::service::user_service::{check_login, check_admin};
 
