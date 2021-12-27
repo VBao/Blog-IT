@@ -5,6 +5,7 @@ use actix_cors::Cors;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::{web, App, HttpServer};
 use actix_web::middleware::Logger;
+use actix_web::web::route;
 use service::*;
 
 mod model;
@@ -51,7 +52,7 @@ async fn main() -> std::io::Result<()> {
                     .route("/reading/{slug_id}", web::get().to(post_service::reading))
                     .route("/interact-comment/{slug}/{id}", web::get().to(post_service::interact_comment))
                     .route("/save-post/{slug}", web::get().to(post_service::save_post))
-                    .route("/follow-tag/{tag}",web::get().to(post_service::follow_tag))
+                    .route("/follow-tag/{tag}", web::get().to(post_service::follow_tag))
             ).service(
             web::scope("/admin")
         ).service(
@@ -61,6 +62,7 @@ async fn main() -> std::io::Result<()> {
                 .route("/dashboard", web::get().to(user_service::get_dashboard))
                 .service(
                     web::scope("admin")
+                        .route("/posts", web::get().to(post_service::posts_get))
                         .route("/users", web::get().to(user_service::users_get))
                 )
         )

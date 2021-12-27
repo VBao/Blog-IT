@@ -41,15 +41,16 @@ pub async fn test_password(password: Json<Logged>) -> impl Responder {
 pub async fn users_get(req: HttpRequest) -> impl Responder {
     match check_login(req).await {
         Ok(id) => {
-            if check_admin(id) {
-                return HttpResponse::Ok().json(doc! {"data":bson::to_bson(&user::get_users().await).unwrap()});
+            return if check_admin(id).await {
+                HttpResponse::Ok().json(doc! {"data":bson::to_bson(&user::get_users().await).unwrap()})
             } else {
-                return HttpResponse::Unauthorized().json(doc! {"msg":"Only admin can access"});
+                HttpResponse::Unauthorized().json(doc! {"msg":"only admin can access"})
             }
         }
         Err(err) => { err }
     }
 }
+
 
 pub async fn get_user(req: HttpRequest, username: Path<String>) -> impl Responder {
     let user_id = match check_login(req).await {
@@ -132,6 +133,6 @@ pub async fn check_login(req: HttpRequest) -> Result<i32, HttpResponse> {
     }
 }
 
-async fn check_admin(id: i32) -> bool {
+pub(crate) async fn check_admin(id: i32) -> bool {
     get_user_full(id).await.admin
 }

@@ -3,7 +3,7 @@ use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use actix_web::web::{Json, Path};
 use crate::database::post;
 use mongodb::bson::doc;
-use crate::database::post::find_by_tag;
+use crate::database::post::{find_by_tag, posts};
 use crate::database::user;
 use crate::database::user::{get_user_by_id};
 use crate::database::tag;
@@ -12,7 +12,7 @@ use crate::dto::post_dto::*;
 use crate::dto::user_dto::SmallAccount;
 use crate::model::post::Post;
 use crate::model::user::Account;
-use crate::service::user_service::check_login;
+use crate::service::user_service::{check_login, check_admin};
 
 pub async fn create_post(id: HttpRequest, post: Json<CreatePost>) -> impl Responder {
     return match check_login(id).await {
@@ -230,14 +230,11 @@ pub async fn get_tag(id: HttpRequest, value: Path<String>) -> impl Responder {
         }
         Err(err) => {
             match err {
-                // ErrorMessage::NotOwned => {}
                 ErrorMessage::NotFound => {
                     let msg = format!("Not found tag with value {}", value);
                     HttpResponse::NotFound().json(doc! {"error":msg})
                 }
-                // ErrorMessage::Unauthorized => {}
                 ErrorMessage::ServerError => { HttpResponse::InternalServerError().json(doc! {"error":"Sorry we not validate this error"}) }
-                // ErrorMessage::Duplicate => {}
                 _ => { HttpResponse::InternalServerError().json(doc! {"error":"Sorry we not validate this error"}) }
             }
         }
@@ -285,16 +282,33 @@ pub async fn save_post(req: HttpRequest, slug: Path<String>) -> impl Responder {
 pub async fn follow_tag(req: HttpRequest, tag: Path<String>) -> impl Responder {
     return match check_login(req).await {
         Ok(id) => {
-            match post::toggle_follow_tag(id, tag.0).await {
-                Ok(_) => { return HttpResponse::Ok().json(doc! {"msg":"follow/unfollow tag success"}); }
+            return match post::toggle_follow_tag(id, tag.0).await {
+                Ok(_) => { HttpResponse::Ok().json(doc! {"msg":"follow/unfollow tag success"}) }
                 Err(err) => {
                     match err {
-                        ErrorMessage::NotFound => { return HttpResponse::NotFound().json(doc! {"msg":"tag not found"}); }
-                        _ => { return HttpResponse::InternalServerError().json(doc! { "msg": "uncheck exception" }); }
+                        ErrorMessage::NotFound => { HttpResponse::NotFound().json(doc! {"msg":"tag not found"}) }
+                        _ => { HttpResponse::InternalServerError().json(doc! { "msg": "uncheck exception" }) }
                     }
                 }
             }
         }
         Err(err) => { err }
     };
+}
+
+pub async fn posts_get(req: HttpRequest) -> impl Responder {
+    match check_login(req).await {
+        Ok(id) => {
+            if check_admin(id).await {
+                let mut res = doc! {};
+                let val = posts().await;
+                res.insert("msg", "success");
+                res.insert("data", bson::to_bson(&val).unwrap());
+                HttpResponse::Ok().json(res)
+            } else {
+                HttpResponse::Unauthorized().json(doc! {"msg":"only admin can access"})
+            }
+        }
+        Err(err) => { err }
+    }
 }

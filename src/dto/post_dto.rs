@@ -227,3 +227,32 @@ impl From<Comment> for PostDetailComment {
         }
     }
 }
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct ShortPostAdmin{
+    pub slug: String,
+    pub title: String,
+    pub username:String,
+    pub interact:i32,
+    pub comment:i32,
+    #[serde(rename = "createdAt")]
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    #[serde(rename = "updatedAt")]
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub tags:Vec<String>
+}
+
+impl From<Post> for  ShortPostAdmin{
+    fn from(post: Post) -> Self {
+        ShortPostAdmin{
+            slug: post.slug,
+            title: post.title,
+            username: post.user_username,
+            interact: post.reaction_count,
+            comment: post.comment_count,
+            created_at: post.created_at,
+            updated_at: post.updated_at,
+            tags: post.tag
+        }
+    }
+}

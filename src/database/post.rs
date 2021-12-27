@@ -13,7 +13,7 @@ use crate::database::tag;
 use crate::model::post::*;
 use crate::database::user::{connect as connect_user, get_user_by_id};
 use crate::model::user::Account;
-use crate::dto::post_dto::{CommentDetail, CommentInfoPage, CreateComment, CreatePost, Index, PostDetail, PostDetailComment, UpdateComment, UpdatePost};
+use crate::dto::post_dto::{CommentDetail, CommentInfoPage, CreateComment, CreatePost, Index, PostDetail, PostDetailComment, ShortPostAdmin, UpdateComment, UpdatePost};
 use crate::dto::tag_dto::TagList;
 use crate::error::ErrorMessage;
 use crate::model::tag::Tag;
@@ -683,4 +683,19 @@ pub async fn toggle_follow_tag(user_id: i32, tag_val: String) -> Result<(), Erro
         Some(_) => { user_col.update_one(doc! {"_id":&user_id}, doc! {"$pull":{"followedTag":&tag.id}}, None).await; }
     }
     return Ok(());
+}
+
+pub async fn posts() ->Vec<ShortPostAdmin>{
+    let find_option = FindOptions::builder().sort(doc! {
+            "createdAt":-1,
+            "reactionCount":-1,
+            "commentCount":-1
+    }).build();
+    let post_col=connection_post().await;
+    let mut cursor =post_col.find(doc! {"status":"Published"}, find_option).await.unwrap();
+    let mut res:Vec<ShortPostAdmin>=Vec::new();
+    while let Some(post) = cursor.try_next().await.unwrap() {
+        res.push(ShortPostAdmin::from(post));
+    }
+    return res;
 }
