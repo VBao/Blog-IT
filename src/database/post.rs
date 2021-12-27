@@ -13,7 +13,7 @@ use crate::database::tag;
 use crate::model::post::*;
 use crate::database::user::{connect as connect_user, get_user_by_id};
 use crate::model::user::Account;
-use crate::dto::post_dto::{CommentDetail, CommentInfoPage, CreateComment, CreatePost, Index, PostDetail, PostDetailComment, UpdateComment, UpdatePost};
+use crate::dto::post_dto::{CommentDetail, CommentInfoPage, CreateComment, CreatePost, Index, PostDetail, PostDetailComment, ShortPostAdmin, UpdateComment, UpdatePost};
 use crate::dto::tag_dto::TagList;
 use crate::error::ErrorMessage;
 use crate::model::tag::Tag;
@@ -167,16 +167,34 @@ pub async fn change_status(author: Account, slug: String) -> Result<Post, ErrorM
     }
 }
 
-pub async fn add_comment(comment: CreateComment, account: Account) -> Post {
+pub async fn add_comment(comment: CreateComment, account: Account) -> Result<Post, String> {
     let col = connection_post().await;
-    let mut post = col.find_one(doc! {"slug":&comment.slug}, None).await.unwrap().unwrap();
+    let mut post = match col.find_one(doc! {"slug":&comment.slug}, None).await.unwrap() {
+        None => { return Err("Post not found".to_string()); }
+        Some(p) => { p }
+    };
     let mut last_id = 1;
     let now = Utc::now();
     if !post.comment.is_empty() {
-        for comment in post.comment.iter() {
-            if comment.id >= last_id { last_id = comment.id };
+        let mut check = false;
+        if comment.parent_id != 0 {
+            for comment_iter in post.comment.iter() {
+                if &comment_iter.id == &comment.parent_id {
+                    check = true;
+                    break;
+                }
+            }
+        } else {
+            check = true;
         }
-        last_id += 1;
+        if check {
+            for comment_iter in post.comment.iter() {
+                if comment_iter.id >= last_id { last_id = comment_iter.id };
+            }
+            last_id += 1;
+        } else {
+            return Err("Not found parent-comment with provided id".to_string());
+        }
     }
     let post_comment = Comment {
         id: last_id,
@@ -199,7 +217,7 @@ pub async fn add_comment(comment: CreateComment, account: Account) -> Post {
         Ok(_) => {}
         Err(err) => { std::panic::panic_any(err) }
     }
-    col.find_one(doc! {"slug":&comment.slug}, None).await.unwrap().unwrap()
+    Ok(col.find_one(doc! {"slug":&comment.slug}, None).await.unwrap().unwrap())
 }
 
 
@@ -665,4 +683,19 @@ pub async fn toggle_follow_tag(user_id: i32, tag_val: String) -> Result<(), Erro
         Some(_) => { user_col.update_one(doc! {"_id":&user_id}, doc! {"$pull":{"followedTag":&tag.id}}, None).await; }
     }
     return Ok(());
+}
+
+pub async fn posts() ->Vec<ShortPostAdmin>{
+    let find_option = FindOptions::builder().sort(doc! {
+            "createdAt":-1,
+            "reactionCount":-1,
+            "commentCount":-1
+    }).build();
+    let post_col=connection_post().await;
+    let mut cursor =post_col.find(doc! {"status":"Published"}, find_option).await.unwrap();
+    let mut res:Vec<ShortPostAdmin>=Vec::new();
+    while let Some(post) = cursor.try_next().await.unwrap() {
+        res.push(ShortPostAdmin::from(post));
+    }
+    return res;
 }

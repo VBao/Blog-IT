@@ -38,6 +38,7 @@ impl From<Account> for AccountStore {
 pub struct ShowAccountAdmin {
     name: String,
     username: String,
+    #[serde(rename="schoolEmail")]
     school_email: String,
     email: String,
     avatar: String,

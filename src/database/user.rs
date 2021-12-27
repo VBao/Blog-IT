@@ -71,6 +71,7 @@ pub async fn log_in(usr: String, pwd: String) -> Result<AccountStore, &'static s
         None => return Err("Not found user")
     }
 }
+
 pub(crate) async fn get_info(username: String) -> Option<Account> {
     let col = connect().await;
     col.find_one(doc! {"username":username}, None).await.unwrap()
@@ -185,15 +186,15 @@ pub async fn search_by_username(keyword: String) -> Vec<Account> {
     return rs;
 }
 
-pub async fn get_user_list_dashboard(user_list: &Vec<i32>)->Vec<SmallAccount>{
-    let mut rs:Vec<SmallAccount> =vec![];
-    let col =connect().await;
-    let query=doc! {
+pub async fn get_user_list_dashboard(user_list: &Vec<i32>) -> Vec<SmallAccount> {
+    let mut rs: Vec<SmallAccount> = vec![];
+    let col = connect().await;
+    let query = doc! {
         "_id":{
             "$in":user_list
         }
     };
-    let mut cursor=col.find(query,None).await.unwrap();
+    let mut cursor = col.find(query, None).await.unwrap();
     while let Some(user) = cursor.try_next().await.unwrap() {
         rs.push(SmallAccount::from(user));
     }
@@ -216,4 +217,9 @@ pub async fn auth_get_id(token: &str) -> Result<i32, String> {
             Err("Something wrong here".to_string())
         }
     }
+}
+
+pub async fn get_user_full(id: i32) -> Account {
+    let col = connect().await;
+    return col.find_one(doc! {"_id":id}, None).await.unwrap().unwrap();
 }
