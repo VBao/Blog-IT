@@ -5,7 +5,7 @@ use crate::database::user;
 use crate::database::post;
 use mongodb::bson::doc;
 use argon2::{self, Config};
-use crate::database::user::{get_user_by_id, get_user_list_dashboard};
+use crate::database::user::{get_user_by_id, get_user_full, get_user_list_dashboard};
 use crate::dto::user_dto::{CreateAccount, UserPage};
 
 #[derive(Deserialize)]
@@ -38,8 +38,17 @@ pub async fn test_password(password: Json<Logged>) -> impl Responder {
     HttpResponse::Ok().body(hash)
 }
 
-pub async fn users_get() -> impl Responder {
-    return HttpResponse::Ok().json(doc! {"data":bson::to_bson(&user::get_users().await).unwrap()});
+pub async fn users_get(req: HttpRequest) -> impl Responder {
+    match check_login(req).await {
+        Ok(id) => {
+            if check_admin(id) {
+                return HttpResponse::Ok().json(doc! {"data":bson::to_bson(&user::get_users().await).unwrap()});
+            } else {
+                return HttpResponse::Unauthorized().json(doc! {"msg":"Only admin can access"});
+            }
+        }
+        Err(err) => { err }
+    }
 }
 
 pub async fn get_user(req: HttpRequest, username: Path<String>) -> impl Responder {
@@ -121,4 +130,8 @@ pub async fn check_login(req: HttpRequest) -> Result<i32, HttpResponse> {
             Err(HttpResponse::Unauthorized().json(doc! {"error":"User not login"}))
         }
     }
+}
+
+async fn check_admin(id: i32) -> bool {
+    get_user_full(id).await.admin
 }
