@@ -1,12 +1,14 @@
 use std::option::Option::Some;
-use futures::{TryStreamExt};
-use mongodb::{bson::{doc}, options::ClientOptions, Client};
+
+use futures::TryStreamExt;
+use mongodb::{bson::doc, Client, options::ClientOptions};
+use mongodb::options::FindOneOptions;
+
 use crate::database::user::get_user_by_id;
 use crate::dto::tag_dto::{CreateTag, TagAdmin, TagList, TagPage, UpdateTag};
 use crate::dto::user_dto::SmallAccount;
 use crate::error::ErrorMessage;
 use crate::model::tag::Tag;
-use mongodb::options::FindOneOptions;
 
 async fn connect() -> mongodb::Collection<Tag> {
     let mut conn = ClientOptions::parse("mongodb://admin:Lj6kuxGJh&k8CaN6UgsQF+aDVkQF3Wn7hdSeXke@localhost:27017/").await.unwrap();
@@ -119,7 +121,7 @@ pub async fn create_tag(tag_create: CreateTag) -> Result<Vec<TagAdmin>, ErrorMes
     match duplicate {
         None => {
             let tag = Tag {
-                id: last_tag.unwrap().id + 1,
+                id: if last_tag.is_some() { last_tag.unwrap().id + 1 } else { 1 },
                 value: tag_create.value,
                 desc: tag_create.desc,
                 color: tag_create.color,
@@ -136,7 +138,7 @@ pub async fn create_tag(tag_create: CreateTag) -> Result<Vec<TagAdmin>, ErrorMes
 
 pub async fn update(tag_update: UpdateTag) -> Result<Vec<TagAdmin>, ErrorMessage> {
     let col = connect().await;
-    let mut tag_opt = col.find_one(doc! {"_id":&tag_update.id}, None).await.unwrap();
+    let tag_opt = col.find_one(doc! {"_id":&tag_update.id}, None).await.unwrap();
     return match tag_opt {
         None => { Err(ErrorMessage::NotFound) }
         Some(mut tag) => {

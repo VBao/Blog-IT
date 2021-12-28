@@ -1,17 +1,19 @@
 use std::borrow::Borrow;
+
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use actix_web::web::{Json, Path};
-use crate::database::post;
 use mongodb::bson::doc;
+
+use crate::database::post;
 use crate::database::post::{find_by_tag, posts};
-use crate::database::user;
-use crate::database::user::{get_user_by_id};
 use crate::database::tag;
-use crate::error::ErrorMessage;
+use crate::database::user;
+use crate::database::user::get_user_by_id;
 use crate::dto::post_dto::*;
 use crate::dto::user_dto::SmallAccount;
+use crate::error::ErrorMessage;
 use crate::model::user::Account;
-use crate::service::user_service::{check_login, check_admin};
+use crate::service::user_service::{check_admin, check_login};
 
 pub async fn create_post(id: HttpRequest, post: Json<CreatePost>) -> impl Responder {
     return match check_login(id).await {
@@ -289,7 +291,7 @@ pub async fn follow_tag(req: HttpRequest, tag: Path<String>) -> impl Responder {
                         _ => { HttpResponse::InternalServerError().json(doc! { "msg": "uncheck exception" }) }
                     }
                 }
-            }
+            };
         }
         Err(err) => { err }
     };
@@ -310,4 +312,21 @@ pub async fn posts_get(req: HttpRequest) -> impl Responder {
         }
         Err(err) => { err }
     }
+}
+
+pub async fn create_list(req: HttpRequest, list: Json<Vec<CreatePost>>) -> impl Responder {
+    return match check_login(req).await {
+        Ok(user_id) => {
+            let user = user::get_user_by_id(user_id).await.unwrap();
+            for post in list.0 {
+                post::create_post(user.to_owned(), post).await;
+            }
+            let mut res = doc! {};
+            let val = posts().await;
+            res.insert("msg", "success");
+            res.insert("data", bson::to_bson(&val).unwrap());
+            HttpResponse::Ok().json(res)
+        }
+        Err(err) => { err }
+    };
 }

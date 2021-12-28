@@ -1,11 +1,12 @@
 use actix_web::{HttpRequest, HttpResponse, Responder};
 use actix_web::web::Json;
-use crate::dto::tag_dto::{CreateTag, TagAdmin, UpdateTag};
-use crate::user_service::{check_admin, check_login};
-use crate::database::tag;
 use mongodb::bson::doc;
+
+use crate::database::tag;
 use crate::database::tag::update;
+use crate::dto::tag_dto::{CreateTag, UpdateTag};
 use crate::error::ErrorMessage;
+use crate::user_service::{check_admin, check_login};
 
 pub async fn get_tags_admin(req: HttpRequest) -> impl Responder {
     match check_login(req).await {
@@ -68,4 +69,11 @@ pub async fn update_tag(req: HttpRequest, tag_update: Json<UpdateTag>) -> impl R
         }
         Err(err) => { err }
     }
+}
+
+pub async fn create_list(list: Json<Vec<CreateTag>>) -> impl Responder {
+    for tag in list.0 {
+        tag::create_tag(tag).await;
+    }
+    HttpResponse::Ok().json(doc! {"data":bson::to_bson(&tag::tags().await).unwrap()})
 }

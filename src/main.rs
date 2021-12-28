@@ -1,12 +1,12 @@
-mod service;
-pub mod database;
-
 use actix_cors::Cors;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
-use actix_web::{web, App, HttpServer};
+use actix_web::{App, HttpServer, web};
 use actix_web::middleware::Logger;
-use actix_web::web::route;
+
 use service::*;
+
+mod service;
+pub mod database;
 
 mod model;
 mod error;
@@ -65,7 +65,12 @@ async fn main() -> std::io::Result<()> {
                     .route("/tags", web::get().to(tag_service::get_tags_admin))
                     .route("/update-tag", web::post().to(tag_service::update_tag))
                     .route("/create-tag", web::post().to(tag_service::create_tag))
-            )
+            ).service(
+            web::scope("run-one")
+                .route("/tag", web::post().to(tag_service::create_list))
+                .route("/post", web::post().to(post_service::create_list))
+                .route("/user", web::post().to(user_service::create_list))
+        )
     })
         .bind("0.0.0.0:8040")?
         .run()

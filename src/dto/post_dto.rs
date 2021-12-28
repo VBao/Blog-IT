@@ -1,5 +1,6 @@
+use serde::{Deserialize, Serialize};
+
 use crate::model::post::{Comment, Post, Status};
-use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct CreatePost {
@@ -229,22 +230,22 @@ impl From<Comment> for PostDetailComment {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
-pub struct ShortPostAdmin{
+pub struct ShortPostAdmin {
     pub slug: String,
     pub title: String,
-    pub username:String,
-    pub interact:i32,
-    pub comment:i32,
+    pub username: String,
+    pub interact: i32,
+    pub comment: i32,
     #[serde(rename = "createdAt")]
     pub created_at: chrono::DateTime<chrono::Utc>,
     #[serde(rename = "updatedAt")]
     pub updated_at: chrono::DateTime<chrono::Utc>,
-    pub tags:Vec<String>
+    pub tags: Vec<String>,
 }
 
-impl From<Post> for  ShortPostAdmin{
+impl From<Post> for ShortPostAdmin {
     fn from(post: Post) -> Self {
-        ShortPostAdmin{
+        ShortPostAdmin {
             slug: post.slug,
             title: post.title,
             username: post.user_username,
@@ -252,7 +253,7 @@ impl From<Post> for  ShortPostAdmin{
             comment: post.comment_count,
             created_at: post.created_at,
             updated_at: post.updated_at,
-            tags: post.tag
+            tags: post.tag,
         }
     }
 }

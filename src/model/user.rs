@@ -1,13 +1,13 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize,Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub enum Status {
     Activated,
     Banned,
     Pending,
 }
 
-#[derive(Deserialize, Serialize,Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Account {
     #[serde(rename = "_id")]
     pub id: i32,
