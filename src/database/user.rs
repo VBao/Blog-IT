@@ -1,11 +1,13 @@
 use std::borrow::Borrow;
 use std::prelude::rust_2021::Option;
+
 use argon2::Config;
 use chrono::{Duration, Utc};
-use futures::{TryStreamExt};
+use futures::TryStreamExt;
 use jsonwebtoken::{Algorithm, decode, DecodingKey, encode, EncodingKey, Header, Validation};
-use mongodb::{bson::{doc}, options::ClientOptions, Client};
-use mongodb::options::{FindOneOptions};
+use mongodb::{bson::doc, Client, options::ClientOptions};
+use mongodb::options::FindOneOptions;
+
 use crate::constant;
 use crate::constant::MONGODB_URL;
 use crate::dto::user_dto::{AccountStore, CreateAccount, ShowAccountAdmin, SmallAccount};
@@ -81,7 +83,12 @@ pub async fn sign_up(account: CreateAccount) -> Result<AccountStore, &'static st
     let col = connect().await;
     let id = {
         let sort = FindOneOptions::builder().sort(doc! {"_id":-1}).build();
-        col.find_one(None, sort).await.unwrap().unwrap().id + 1
+        let last_user = col.find_one(None, sort).await.unwrap();
+        if last_user.is_some() {
+            last_user.unwrap().id + 1
+        } else {
+            1
+        }
     };
     let password = {
         let config = Config::default();
@@ -94,11 +101,11 @@ pub async fn sign_up(account: CreateAccount) -> Result<AccountStore, &'static st
         username: account.username.to_owned(),
         school_email: account.school_email,
         private_email: account.private_email,
-        bio: "".to_string(),
+        bio: if account.bio.is_some() { account.bio.unwrap() } else { "".to_string() },
         password,
-        avatar: "".to_string(),
+        avatar: if account.avatar.is_some() { account.avatar.unwrap() } else { "".to_string() },
         admin: false,
-        website: "".to_string(),
+        website: if account.website.is_some() { account.website.unwrap() } else { "".to_string() },
         last_access: now,
         created_at: now,
         updated_at: now,

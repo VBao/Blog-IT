@@ -1,10 +1,11 @@
-use actix_web::{web, HttpResponse, Responder, HttpRequest};
+use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use actix_web::web::{Json, Path};
-use serde::{Deserialize};
-use crate::database::user;
-use crate::database::post;
-use mongodb::bson::doc;
 use argon2::{self, Config};
+use mongodb::bson::doc;
+use serde::Deserialize;
+
+use crate::database::post;
+use crate::database::user;
 use crate::database::user::{get_user_by_id, get_user_full, get_user_list_dashboard};
 use crate::dto::user_dto::{CreateAccount, UserPage};
 
@@ -45,7 +46,7 @@ pub async fn users_get(req: HttpRequest) -> impl Responder {
                 HttpResponse::Ok().json(doc! {"data":bson::to_bson(&user::get_users().await).unwrap()})
             } else {
                 HttpResponse::Unauthorized().json(doc! {"msg":"only admin can access"})
-            }
+            };
         }
         Err(err) => { err }
     }
@@ -135,4 +136,11 @@ pub async fn check_login(req: HttpRequest) -> Result<i32, HttpResponse> {
 
 pub(crate) async fn check_admin(id: i32) -> bool {
     get_user_full(id).await.admin
+}
+
+pub async fn create_list(list: Json<Vec<CreateAccount>>) -> impl Responder {
+    for acc in list.0 {
+        user::sign_up(acc).await;
+    }
+    HttpResponse::Ok().json(doc! {"data":bson::to_bson(&user::get_users().await).unwrap()})
 }

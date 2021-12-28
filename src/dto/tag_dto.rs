@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+
 use crate::dto::user_dto::SmallAccount;
 use crate::model::tag::Tag;
 
@@ -76,7 +77,7 @@ pub struct CreateTag {
     pub value: String,
     pub desc: String,
     pub color: String,
-    pub image: String
+    pub image: String,
 }
 
 #[derive(Deserialize, Serialize)]

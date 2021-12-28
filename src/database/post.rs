@@ -1,22 +1,24 @@
-use std::borrow::{Borrow};
+use std::borrow::Borrow;
 use std::option::Option::Some;
 use std::prelude::rust_2021::Option;
+
 use chrono::{DateTime, Utc};
-use futures::{TryStreamExt};
-use mongodb::{bson::{doc}, options::ClientOptions, Client, Collection, Cursor};
+use futures::TryStreamExt;
+use mongodb::{bson::doc, Client, Collection, Cursor, options::ClientOptions};
 use mongodb::options::{FindOneOptions, FindOptions};
-use rand::distributions::Alphanumeric;
 use rand::{Rng, thread_rng};
+use rand::distributions::Alphanumeric;
 use slug::slugify;
+
 use crate::constant::MONGODB_URL;
 use crate::database::tag;
-use crate::model::post::*;
 use crate::database::user::{connect as connect_user, get_user_by_id};
-use crate::model::user::Account;
 use crate::dto::post_dto::{CommentDetail, CommentInfoPage, CreateComment, CreatePost, Index, PostDetail, PostDetailComment, ShortPostAdmin, UpdateComment, UpdatePost};
 use crate::dto::tag_dto::TagList;
 use crate::error::ErrorMessage;
+use crate::model::post::*;
 use crate::model::tag::Tag;
+use crate::model::user::Account;
 
 async fn connection_post() -> Collection<Post> {
     let mut conn = ClientOptions::parse(MONGODB_URL).await.unwrap();
@@ -88,7 +90,7 @@ pub async fn create_post(account: Account, create: CreatePost) -> PostDetail {
     let last_post = col.borrow().find_one(None, sort).await.unwrap();
     let slug = slug_generate(&create.title, &account.username).await;
     let post = Post {
-        id: last_post.unwrap().id + 1,
+        id: if last_post.is_some() { last_post.unwrap().id + 1 } else { 1 },
         user_username: account.username,
         user_avatar: account.avatar,
         user_name: account.name,
@@ -648,16 +650,12 @@ pub async fn get_post(user_id: Option<&i32>, slug: String) -> Result<PostDetail,
 pub async fn toggle_save_post(user_id: i32, slug: String) -> Result<PostDetail, ErrorMessage> {
     let post_col = connection_post().await;
     let user_col = connect_user().await;
-    let user = user_col.find_one(doc! {"_id":&user_id}, None).await.unwrap().unwrap();
-
     let post = match post_col.find_one(doc! {"slug":&slug}, None).await.unwrap() {
         None => { return Err(ErrorMessage::NotFound); }
         Some(post) => { post }
     };
 
     if post.saved_by_user.contains(&user_id) {
-        let rs = post_col.update_one(doc! {"slug":slug}, doc! {"$pull":{"savedByUser":user_id}}, None).await.unwrap();
-        // log::
         user_col.update_one(doc! {"_id":user_id}, doc! {"$pull":{"readingList":post.id}}, None).await;
     } else {
         post_col.update_one(doc! {"slug":slug}, doc! {"$push":{"savedByUser":user_id}}, None).await;
@@ -685,15 +683,15 @@ pub async fn toggle_follow_tag(user_id: i32, tag_val: String) -> Result<(), Erro
     return Ok(());
 }
 
-pub async fn posts() ->Vec<ShortPostAdmin>{
+pub async fn posts() -> Vec<ShortPostAdmin> {
     let find_option = FindOptions::builder().sort(doc! {
             "createdAt":-1,
             "reactionCount":-1,
             "commentCount":-1
     }).build();
-    let post_col=connection_post().await;
-    let mut cursor =post_col.find(doc! {"status":"Published"}, find_option).await.unwrap();
-    let mut res:Vec<ShortPostAdmin>=Vec::new();
+    let post_col = connection_post().await;
+    let mut cursor = post_col.find(doc! {"status":"Published"}, find_option).await.unwrap();
+    let mut res: Vec<ShortPostAdmin> = Vec::new();
     while let Some(post) = cursor.try_next().await.unwrap() {
         res.push(ShortPostAdmin::from(post));
     }

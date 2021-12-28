@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize,Clone)]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct Tag {
     #[serde(rename = "_id")]
     pub id: i32,
