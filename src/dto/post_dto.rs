@@ -160,6 +160,7 @@ pub struct PostDetail {
     pub saved_count: i32,
     pub followed: bool,
     pub interacted: bool,
+    pub saved: bool
 }
 
 impl From<Post> for PostDetail {
@@ -187,6 +188,7 @@ impl From<Post> for PostDetail {
             saved_count: post.saved_by_user.len() as i32,
             followed: false,
             interacted: false,
+            saved: false
         }
     }
 }

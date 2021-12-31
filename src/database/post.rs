@@ -169,7 +169,7 @@ pub async fn change_status(author: Account, slug: String) -> Result<Post, ErrorM
     }
 }
 
-pub async fn add_comment(comment: CreateComment, account: Account) -> Result<Post, String> {
+pub async fn add_comment(comment: CreateComment, account: Account) -> Result<PostDetail, String> {
     let col = connection_post().await;
     let mut post = match col.find_one(doc! {"slug":&comment.slug}, None).await.unwrap() {
         None => { return Err("Post not found".to_string()); }
@@ -219,7 +219,7 @@ pub async fn add_comment(comment: CreateComment, account: Account) -> Result<Pos
         Ok(_) => {}
         Err(err) => { std::panic::panic_any(err) }
     }
-    Ok(col.find_one(doc! {"slug":&comment.slug}, None).await.unwrap().unwrap())
+    Ok(PostDetail::from(col.find_one(doc! {"slug":&comment.slug}, None).await.unwrap().unwrap()))
 }
 
 
@@ -616,13 +616,13 @@ pub async fn get_post(user_id: Option<&i32>, slug: String) -> Result<PostDetail,
     };
     match user_id {
         None => { Ok(PostDetail::from(post)) }
-        Some(id) => {
-            let interact_post = post.reaction_list.contains(id);
+        Some(usr_id) => {
             let mut result = PostDetail::from(post.to_owned());
-            result.interacted = interact_post;
+            result.interacted = post.reaction_list.contains(usr_id);
+            result.saved = post.saved_by_user.contains(usr_id);
             for com in post.comment.iter() {
                 let mut comment = PostDetailComment::from(com.to_owned());
-                if com.interact_list.contains(id) {
+                if com.interact_list.contains(usr_id) {
                     comment.interacted = true;
                     result.comment.push(comment)
                 }

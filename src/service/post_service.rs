@@ -283,8 +283,13 @@ pub async fn save_post(req: HttpRequest, slug: Path<String>) -> impl Responder {
 pub async fn follow_tag(req: HttpRequest, tag: Path<String>) -> impl Responder {
     return match check_login(req).await {
         Ok(id) => {
-            return match post::toggle_follow_tag(id, tag.0).await {
-                Ok(_) => { HttpResponse::Ok().json(doc! {"msg":"follow/unfollow tag success"}) }
+            return match post::toggle_follow_tag(id.to_owned(), tag.0).await {
+                Ok(_) => {
+                    let mut res = doc! {};
+                    res.insert("msg", "follow/unfollow tag success");
+                    res.insert("data", bson::to_bson(&tag::get_tags(Some(id)).await).unwrap());
+                    HttpResponse::Ok().json(res)
+                }
                 Err(err) => {
                     match err {
                         ErrorMessage::NotFound => { HttpResponse::NotFound().json(doc! {"msg":"tag not found"}) }
