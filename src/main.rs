@@ -56,6 +56,7 @@ async fn main() -> std::io::Result<()> {
             ).service(
             web::scope("/user")
                 // TODO Follow new user
+                .route("/follow/{username_following}", web::get().to(user_service::follow_user_toggle))
                 .route("/info/{username}", web::get().to(user_service::get_user))
                 .route("/dashboard", web::get().to(user_service::get_dashboard)))
             .service(

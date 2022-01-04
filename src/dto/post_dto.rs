@@ -48,6 +48,7 @@ pub struct Index {
     #[serde(rename = "userName")]
     pub user_name: String,
     pub slug: String,
+    pub banner: String,
     pub title: String,
     #[serde(rename = "createdAt")]
     pub created_at: chrono::DateTime<chrono::Utc>,

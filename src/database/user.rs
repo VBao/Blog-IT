@@ -11,6 +11,7 @@ use mongodb::options::FindOneOptions;
 use crate::constant;
 use crate::constant::MONGODB_URL;
 use crate::dto::user_dto::{AccountStore, CreateAccount, ShowAccountAdmin, SmallAccount};
+use crate::error::ErrorMessage;
 use crate::model::user::*;
 
 const SALT: &str = "r5sAxyGpQ-vB";
@@ -63,6 +64,7 @@ pub async fn log_in(usr: String, pwd: String) -> Result<AccountStore, &'static s
                     &claim,
                     &EncodingKey::from_secret(key),
                 ).unwrap();
+                col.update_one(doc! {"username":&info.username}, doc! {"$set":{"lastAccess":Utc::now()}}, None).await;
                 let mut info = AccountStore::from(info);
                 info.token = token;
                 Ok(info)
@@ -203,7 +205,9 @@ pub async fn get_user_list_dashboard(user_list: &Vec<i32>) -> Vec<SmallAccount> 
     };
     let mut cursor = col.find(query, None).await.unwrap();
     while let Some(user) = cursor.try_next().await.unwrap() {
-        rs.push(SmallAccount::from(user));
+        let mut user = SmallAccount::from(user);
+        user.followed = true;
+        rs.push(user);
     }
     rs
 }
@@ -229,4 +233,23 @@ pub async fn auth_get_id(token: &str) -> Result<i32, String> {
 pub async fn get_user_full(id: i32) -> Account {
     let col = connect().await;
     return col.find_one(doc! {"_id":id}, None).await.unwrap().unwrap();
+}
+
+pub async fn follow_user_toggle(user_id: i32, username_follow: String) -> Result<(), ErrorMessage> {
+    let col = connect().await;
+    let user_follow = col.find_one(doc! {"username":username_follow}, None).await.unwrap();
+    return match user_follow {
+        None => {
+            Err(ErrorMessage::NotFound)
+        }
+        Some(user_follower) => {
+            let follower = col.find_one(doc! {"_id":&user_id}, None).await.unwrap().unwrap();
+            if follower.followed_user.contains(&user_follower.id) {
+                col.update_one(doc! {"_id":user_id}, doc! {"$pull":{"followedUser":user_follower.id}}, None).await;
+            } else {
+                col.update_one(doc! {"_id":user_id}, doc! {"$push":{"followedUser":user_follower.id}}, None).await;
+            }
+            Ok(())
+        }
+    };
 }

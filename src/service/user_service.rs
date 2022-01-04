@@ -8,6 +8,7 @@ use crate::database::post;
 use crate::database::user;
 use crate::database::user::{get_user_by_id, get_user_full, get_user_list_dashboard};
 use crate::dto::user_dto::{CreateAccount, UserPage};
+use crate::error::ErrorMessage;
 
 #[derive(Deserialize)]
 pub struct LoginInfo {
@@ -129,7 +130,7 @@ pub async fn check_login(req: HttpRequest) -> Result<i32, HttpResponse> {
             };
         }
         None => {
-            Err(HttpResponse::Unauthorized().json(doc! {"error":"User not login"}))
+            Err(HttpResponse::Unauthorized().json(doc! {"msg":"User not login"}))
         }
     }
 }
@@ -143,4 +144,37 @@ pub async fn create_list(list: Json<Vec<CreateAccount>>) -> impl Responder {
         user::sign_up(acc).await;
     }
     HttpResponse::Ok().json(doc! {"data":bson::to_bson(&user::get_users().await).unwrap()})
+}
+
+pub async fn follow_user_toggle(req: HttpRequest, username_following: Path<String>) -> impl Responder {
+    return match check_login(req.to_owned()).await {
+        Ok(id) => {
+            match user::follow_user_toggle(id.to_owned(), username_following.0).await {
+                Ok(_) => {
+                    let mut response = doc! {};
+                    let user = get_user_by_id(id).await.unwrap();
+                    let post_list = post::get_post_dashboard(&user).await;
+                    response.insert("post", bson::to_bson(&post_list).unwrap());
+                    let tag_list = post::get_tag_dashboard(&user).await;
+                    response.insert("tag", bson::to_bson(&tag_list).unwrap());
+                    let user_list = get_user_list_dashboard(&user.followed_user).await;
+                    response.insert("following", bson::to_bson(&user_list).unwrap());
+                    HttpResponse::Ok().json(doc! { "data":response})
+                }
+                Err(err) => {
+                    match err {
+                        ErrorMessage::NotFound => {
+                            HttpResponse::NotFound().json(doc! {"msg":"not found user with provided name"})
+                        }
+                        _ => {
+                            HttpResponse::InternalServerError().json(doc! {"msg":"un-check exception"})
+                        }
+                    }
+                }
+            }
+        }
+        Err(err) => {
+            err
+        }
+    };
 }

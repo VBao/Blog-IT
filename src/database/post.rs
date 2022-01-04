@@ -57,6 +57,7 @@ async fn map_index(mut cursor: Cursor<Post>, account: &Option<Account>) -> Vec<I
             user_avatar: post.user_avatar,
             user_name: post.user_name,
             slug: post.slug,
+            banner: if post.banner.is_none() { "".to_string() } else { post.banner.unwrap() },
             title: post.title,
             created_at: post.created_at,
             updated_at: post.updated_at,
