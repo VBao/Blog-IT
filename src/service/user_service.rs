@@ -7,7 +7,7 @@ use serde::Deserialize;
 use crate::database::post;
 use crate::database::user;
 use crate::database::user::{get_user_by_id, get_user_full, get_user_list_dashboard};
-use crate::dto::user_dto::{CreateAccount, UserPage};
+use crate::dto::user_dto::{CreateAccount, UpdateAccount, UserPage};
 use crate::error::ErrorMessage;
 
 #[derive(Deserialize)]
@@ -206,4 +206,29 @@ pub async fn create_admin(req: HttpRequest, acc: Json<CreateAccount>) -> impl Re
         }
         Err(err) => { err }
     };
+}
+
+pub async fn edit_info(req: HttpRequest, account: Json<UpdateAccount>) -> impl Responder {
+    return match check_login(req).await {
+        Ok(id) => {
+            match user::update_info(&id, account.0).await {
+                Ok(_) => {}
+                Err(err) => {
+                    return match err {
+                        _ => { HttpResponse::InternalServerError().json(doc! {"msg":"uncheck exception"}) }
+                    }
+                }
+            }
+            let mut response = doc! {};
+            let user = get_user_by_id(id).await.unwrap();
+            let post_list = post::get_post_dashboard(&user).await;
+            response.insert("post", bson::to_bson(&post_list).unwrap());
+            let tag_list = post::get_tag_dashboard(&user).await;
+            response.insert("tag", bson::to_bson(&tag_list).unwrap());
+            let user_list = get_user_list_dashboard(&user.followed_user).await;
+            response.insert("following", bson::to_bson(&user_list).unwrap());
+            HttpResponse::Ok().json(doc! { "data":response})
+        }
+        Err(err) => { err }
+    }
 }

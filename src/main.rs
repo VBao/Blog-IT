@@ -58,7 +58,8 @@ async fn main() -> std::io::Result<()> {
             web::scope("/user")
                 .route("/follow/{username_following}", web::get().to(user_service::follow_user_toggle))
                 .route("/info/{username}", web::get().to(user_service::get_user))
-                .route("/dashboard", web::get().to(user_service::get_dashboard)))
+                .route("/dashboard", web::get().to(user_service::get_dashboard))
+                .route("/edit-info", web::post().to(user_service::edit_info)))
             .service(
                 web::scope("admin")
                     .route("/create-admin", web::post().to(user_service::create_admin))

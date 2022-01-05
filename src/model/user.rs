@@ -6,7 +6,9 @@ use crate::dto::user_dto::CreateAccount;
 pub enum Status {
     Activated,
     Banned,
+    Unactivated,
     Pending,
+    Graduated
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]

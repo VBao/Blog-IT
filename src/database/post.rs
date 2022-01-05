@@ -20,7 +20,7 @@ use crate::model::post::*;
 use crate::model::tag::Tag;
 use crate::model::user::Account;
 
-async fn connection_post() -> Collection<Post> {
+pub async fn connection_post() -> Collection<Post> {
     let mut conn = ClientOptions::parse(MONGODB_URL).await.unwrap();
     conn.app_name = Some("My App".to_string());
     let client = Client::with_options(conn).unwrap();
