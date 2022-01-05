@@ -64,7 +64,10 @@ pub async fn log_in(usr: String, pwd: String) -> Result<AccountStore, &'static s
                     &claim,
                     &EncodingKey::from_secret(key),
                 ).unwrap();
-                col.update_one(doc! {"username":&info.username}, doc! {"$set":{"lastAccess":Utc::now()}}, None).await;
+                match col.update_one(doc! {"username":&info.username}, doc! {"$set":{"lastAccess":Utc::now()}}, None).await {
+                    Ok(_) => {}
+                    Err(_) => { return Err("can not log in"); }
+                }
                 let mut info = AccountStore::from(info);
                 info.token = token;
                 Ok(info)
@@ -83,6 +86,9 @@ pub(crate) async fn get_info(username: String) -> Option<Account> {
 
 pub async fn sign_up(account: CreateAccount) -> Result<AccountStore, &'static str> {
     let col = connect().await;
+    if check_username_duplicate(&account.username).await {
+        return Err("username has been taken");
+    }
     let id = {
         let sort = FindOneOptions::builder().sort(doc! {"_id":-1}).build();
         let last_user = col.find_one(None, sort).await.unwrap();
@@ -127,8 +133,11 @@ pub async fn sign_up(account: CreateAccount) -> Result<AccountStore, &'static st
     log_in(account.username, account.password).await
 }
 
-pub async fn create_admin(account: CreateAccount) {
+pub async fn create_admin(account: CreateAccount) -> Result<AccountStore, ErrorMessage> {
     let col = connect().await;
+    if check_username_duplicate(&account.username).await {
+        return Err(ErrorMessage::Duplicate);
+    }
     let id = {
         let sort = FindOneOptions::builder().sort(doc! {"_id":-1}).build();
         col.find_one(None, sort).await.unwrap().unwrap().id + 1
@@ -141,7 +150,7 @@ pub async fn create_admin(account: CreateAccount) {
     let create_acc = Account {
         id,
         name: account.name,
-        username: account.username,
+        username: account.username.to_owned(),
         school_email: account.school_email,
         private_email: account.private_email,
         bio: "".to_string(),
@@ -157,10 +166,10 @@ pub async fn create_admin(account: CreateAccount) {
         reading_list: vec![],
         followed_user: vec![],
     };
-    match col.insert_one(create_acc, None).await {
-        Ok(_) => {}
-        Err(err) => { std::panic::panic_any(err) }
-    }
+    return match col.insert_one(create_acc, None).await {
+        Ok(_) => { Ok(log_in(account.username, account.password).await.unwrap()) }
+        Err(_) => { Err(ErrorMessage::ServerError) }
+    };
 }
 
 pub async fn find_by_id(id: i32) -> Result<Account, ()> {
@@ -245,11 +254,27 @@ pub async fn follow_user_toggle(user_id: i32, username_follow: String) -> Result
         Some(user_follower) => {
             let follower = col.find_one(doc! {"_id":&user_id}, None).await.unwrap().unwrap();
             if follower.followed_user.contains(&user_follower.id) {
-                col.update_one(doc! {"_id":user_id}, doc! {"$pull":{"followedUser":user_follower.id}}, None).await;
+                match col.update_one(doc! {"_id":user_id}, doc! {"$pull":{"followedUser":user_follower.id}}, None).await {
+                    Ok(_) => {}
+                    Err(_) => { return Err(ErrorMessage::ServerError); }
+                }
             } else {
-                col.update_one(doc! {"_id":user_id}, doc! {"$push":{"followedUser":user_follower.id}}, None).await;
+                match col.update_one(doc! {"_id":user_id}, doc! {"$push":{"followedUser":user_follower.id}}, None).await {
+                    Ok(_) => {}
+                    Err(_) => { return Err(ErrorMessage::ServerError); }
+                }
             }
             Ok(())
         }
+    };
+}
+
+
+pub async fn check_username_duplicate(username: &String) -> bool {
+    let col = connect().await;
+    let user = col.find_one(doc! {"username":username}, None).await.unwrap();
+    return match user {
+        None => { false }
+        Some(_) => { true }
     };
 }

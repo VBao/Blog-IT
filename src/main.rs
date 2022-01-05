@@ -55,12 +55,12 @@ async fn main() -> std::io::Result<()> {
                     .route("/follow-tag/{tag}", web::get().to(post_service::follow_tag))
             ).service(
             web::scope("/user")
-                // TODO Follow new user
                 .route("/follow/{username_following}", web::get().to(user_service::follow_user_toggle))
                 .route("/info/{username}", web::get().to(user_service::get_user))
                 .route("/dashboard", web::get().to(user_service::get_dashboard)))
             .service(
                 web::scope("admin")
+                    .route("/create-admin", web::post().to(user_service::create_admin))
                     .route("/posts", web::get().to(post_service::posts_get))
                     .route("/users", web::get().to(user_service::users_get))
                     .route("/tags", web::get().to(tag_service::get_tags_admin))

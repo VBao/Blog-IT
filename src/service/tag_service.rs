@@ -73,7 +73,10 @@ pub async fn update_tag(req: HttpRequest, tag_update: Json<UpdateTag>) -> impl R
 
 pub async fn create_list(list: Json<Vec<CreateTag>>) -> impl Responder {
     for tag in list.0 {
-        tag::create_tag(tag).await;
+        match tag::create_tag(tag).await {
+            Ok(_) => {}
+            Err(_) => { return HttpResponse::InternalServerError().json(doc! {"msg":"can not create"}); }
+        }
     }
     HttpResponse::Ok().json(doc! {"data":bson::to_bson(&tag::tags().await).unwrap()})
 }

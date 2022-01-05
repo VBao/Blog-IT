@@ -129,7 +129,10 @@ pub async fn create_tag(tag_create: CreateTag) -> Result<Vec<TagAdmin>, ErrorMes
                 post: 0,
                 moderator: vec![],
             };
-            col.insert_one(tag, None).await;
+            match col.insert_one(tag, None).await{
+                Ok(_) => {}
+                Err(_) => {return Err(ErrorMessage::ServerError)}
+            }
             Ok(tags().await)
         }
         Some(_) => { Err(ErrorMessage::Duplicate) }
@@ -152,7 +155,10 @@ pub async fn update(tag_update: UpdateTag) -> Result<Vec<TagAdmin>, ErrorMessage
             if tag_update.desc.is_some() { tag.desc = tag_update.desc.unwrap() }
             if tag_update.color.is_some() { tag.color = tag_update.color.unwrap() }
             if tag_update.image.is_some() { tag.image = tag_update.image.unwrap() }
-            col.replace_one(doc! {"_id":&tag.id}, tag, None).await;
+            match col.replace_one(doc! {"_id":&tag.id}, tag, None).await {
+                Ok(_) => {}
+                Err(_) => { return Err(ErrorMessage::ServerError); }
+            }
             Ok(tags().await)
         }
     };

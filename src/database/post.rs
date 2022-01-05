@@ -533,7 +533,10 @@ pub async fn reading_process(account: Account, slug: String) -> Result<PostDetai
         None => { return Err("Can not found post with provided slug".to_string()); }
         Some(p) => {
             if account.reading_list.contains(&p.id) {
-                post_col.update_one(doc! {"slug":slug.to_owned()}, doc! {"$pull":{"savedByUser":account.id}}, None).await;
+                match post_col.update_one(doc! {"slug":slug.to_owned()}, doc! {"$pull":{"savedByUser":account.id}}, None).await {
+                    Ok(_) => {}
+                    Err(_) => { return Err("Internal Server Error".to_string()); }
+                }
                 match user_col.update_one(doc! { "_id":account.id}, doc! {"$pull":{"readingList":p.id}}, None).await {
                     Ok(_) => {
                         return match get_post(Some(&account.id), slug).await {
@@ -544,15 +547,18 @@ pub async fn reading_process(account: Account, slug: String) -> Result<PostDetai
                     Err(_err) => { Err("Can not remove interact".to_string()) }
                 }
             } else {
-                post_col.update_one(doc! { "slug":slug.to_owned()}, doc! {"$push":{"savedByUser":account.id}}, None).await;
+                match post_col.update_one(doc! { "slug":slug.to_owned()}, doc! {"$push":{"savedByUser":account.id}}, None).await {
+                    Ok(_) => {}
+                    Err(_) => { return Err("can not update".to_string()); }
+                }
                 match user_col.update_one(doc! { "_id":account.id}, doc! {"$push":{"readingList":p.id}}, None).await {
                     Ok(_) => {
                         return match get_post(Some(&account.id), slug).await {
                             Ok(post_rs) => { Ok(post_rs) }
-                            Err(_) => { Err("Internal Server Error".to_string()) }
+                            Err(_) => { return Err("Internal Server Error".to_string()); }
                         };
                     }
-                    Err(_err) => { Err("Can not add interact".to_string()) }
+                    Err(_err) => { return Err("Can not add interact".to_string()); }
                 }
             }
         }
@@ -657,10 +663,23 @@ pub async fn toggle_save_post(user_id: i32, slug: String) -> Result<PostDetail, 
     };
 
     if post.saved_by_user.contains(&user_id) {
-        user_col.update_one(doc! {"_id":user_id}, doc! {"$pull":{"readingList":post.id}}, None).await;
+        match user_col.update_one(doc! {"_id":user_id}, doc! {"$pull":{"readingList":post.id}}, None).await {
+            Ok(_) => {}
+            Err(_) => { return Err(ErrorMessage::ServerError); }
+        }
+        match post_col.update_one(doc! {"_id":slug}, doc! {"$pull":{"savedByUser":user_id}}, None).await {
+            Ok(_) => {}
+            Err(_) => { return Err(ErrorMessage::ServerError); }
+        }
     } else {
-        post_col.update_one(doc! {"slug":slug}, doc! {"$push":{"savedByUser":user_id}}, None).await;
-        user_col.update_one(doc! {"_id":user_id}, doc! {"$push":{"readingList":post.id}}, None).await;
+        match post_col.update_one(doc! {"slug":slug}, doc! {"$push":{"savedByUser":user_id}}, None).await {
+            Ok(_) => {}
+            Err(_) => { return Err(ErrorMessage::ServerError); }
+        }
+        match user_col.update_one(doc! {"_id":user_id}, doc! {"$push":{"readingList":post.id}}, None).await {
+            Ok(_) => {}
+            Err(_) => { return Err(ErrorMessage::ServerError); }
+        }
     }
     let result_post = post_col.find_one(doc! {"_id":post.id}, None).await.unwrap().unwrap();
     return Ok(PostDetail::from(result_post));
@@ -678,8 +697,18 @@ pub async fn toggle_follow_tag(user_id: i32, tag_val: String) -> Result<(), Erro
         {"_id":&user_id},
         {"followedTag":{"$in":[&tag.id]}}
     ]}, None).await.unwrap() {
-        None => { user_col.update_one(doc! {"_id":&user_id}, doc! {"$push":{"followedTag":&tag.id}}, None).await; }
-        Some(_) => { user_col.update_one(doc! {"_id":&user_id}, doc! {"$pull":{"followedTag":&tag.id}}, None).await; }
+        None => {
+            match user_col.update_one(doc! {"_id":&user_id}, doc! {"$push":{"followedTag":&tag.id}}, None).await {
+                Ok(_) => {}
+                Err(_) => { return Err(ErrorMessage::ServerError); }
+            }
+        }
+        Some(_) => {
+            match user_col.update_one(doc! {"_id":&user_id}, doc! {"$pull":{"followedTag":&tag.id}}, None).await {
+                Ok(_) => {}
+                Err(_) => { return Err(ErrorMessage::ServerError); }
+            }
+        }
     }
     return Ok(());
 }

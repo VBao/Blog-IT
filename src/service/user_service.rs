@@ -141,7 +141,10 @@ pub(crate) async fn check_admin(id: i32) -> bool {
 
 pub async fn create_list(list: Json<Vec<CreateAccount>>) -> impl Responder {
     for acc in list.0 {
-        user::sign_up(acc).await;
+        match user::sign_up(acc).await {
+            Ok(_) => {}
+            Err(_) => { return HttpResponse::InternalServerError().json(doc! { "msg": "can not create" }); }
+        }
     }
     HttpResponse::Ok().json(doc! {"data":bson::to_bson(&user::get_users().await).unwrap()})
 }
@@ -176,5 +179,31 @@ pub async fn follow_user_toggle(req: HttpRequest, username_following: Path<Strin
         Err(err) => {
             err
         }
+    };
+}
+
+pub async fn create_admin(req: HttpRequest, acc: Json<CreateAccount>) -> impl Responder {
+    return match check_login(req).await {
+        Ok(user_id) => {
+            if check_admin(user_id).await {
+                match user::create_admin(acc.0).await {
+                    Ok(acc) => {
+                        let mut resp = doc! {"msg":"admin has been created"};
+                        resp.insert("data", bson::to_bson(&acc).unwrap());
+                        HttpResponse::Ok().json(resp)
+                    }
+                    Err(err) => {
+                        match err {
+                            ErrorMessage::ServerError => { HttpResponse::InternalServerError().json(doc! {"msg":"can not create new admin"}) }
+                            ErrorMessage::Duplicate => { HttpResponse::BadRequest().json(doc! {"msg":"username has been used"}) }
+                            _ => { HttpResponse::InternalServerError().json(doc! {"msg":"uncheck exception"}) }
+                        }
+                    }
+                }
+            } else {
+                HttpResponse::Unauthorized().json(doc! {"msg":"only admin can access"})
+            }
+        }
+        Err(err) => { err }
     };
 }
