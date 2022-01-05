@@ -727,3 +727,27 @@ pub async fn posts() -> Vec<ShortPostAdmin> {
     }
     return res;
 }
+
+pub async fn delete_post(user_id: &i32, slug: String) -> Result<(), ErrorMessage> {
+    let col = connection_post().await;
+    let user_col = connect_user().await;
+    let user = user_col.find_one(doc! {"_id":user_id}, None).await.unwrap().unwrap();
+    let post_opt = col.find_one(doc! {"slug":&slug}, None).await.unwrap();
+    return match post_opt {
+        None => { Err(ErrorMessage::NotFound) }
+        Some(post) => {
+            if post.user_username != user.username {
+                return Err(ErrorMessage::Unauthorized);
+            }
+            match col.delete_one(doc! {"slug":&slug}, None).await {
+                Ok(_) => {}
+                Err(_) => { return Err(ErrorMessage::ServerError); }
+            }
+            let user_col = connect_user().await;
+            match user_col.update_many(doc! {"readingList":&post.id}, doc! {"$pull":{"readingList":&post.id}}, None).await {
+                Ok(_) => { Ok(()) }
+                Err(_) => { Err(ErrorMessage::ServerError) }
+            }
+        }
+    };
+}
