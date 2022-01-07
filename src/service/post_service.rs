@@ -8,7 +8,7 @@ use crate::database::post;
 use crate::database::post::{find_by_tag, posts};
 use crate::database::tag;
 use crate::database::user;
-use crate::database::user::get_user_by_id;
+use crate::database::user::{get_user_by_id, get_user_list_dashboard};
 use crate::dto::post_dto::*;
 use crate::dto::user_dto::SmallAccount;
 use crate::error::ErrorMessage;
@@ -334,4 +334,33 @@ pub async fn create_list(req: HttpRequest, list: Json<Vec<CreatePost>>) -> impl 
         }
         Err(err) => { err }
     };
+}
+
+pub async fn delete_post(req: HttpRequest, slug: Path<String>) -> impl Responder {
+    return match check_login(req).await {
+        Ok(user_id) => {
+            match post::delete_post(&user_id, slug.0).await {
+                Ok(_) => {
+                    let mut response = doc! {};
+                    let user = get_user_by_id(user_id).await.unwrap();
+                    let post_list = post::get_post_dashboard(&user).await;
+                    response.insert("post", bson::to_bson(&post_list).unwrap());
+                    let tag_list = post::get_tag_dashboard(&user).await;
+                    response.insert("tag", bson::to_bson(&tag_list).unwrap());
+                    let user_list = get_user_list_dashboard(&user.followed_user).await;
+                    response.insert("following", bson::to_bson(&user_list).unwrap());
+                    HttpResponse::Ok().json(doc! { "data":response})
+                }
+                Err(err) => {
+                    match err {
+                        ErrorMessage::NotFound => { HttpResponse::NotFound().json(doc! {"msg":"not found post with provided slug"}) }
+                        ErrorMessage::Unauthorized => { HttpResponse::Unauthorized().json(doc! {"msg":"you not owned this post"}) }
+                        ErrorMessage::ServerError => { HttpResponse::InternalServerError().json(doc! {"msg":"can not delete post"}) }
+                        _ => { HttpResponse::InternalServerError().json(doc! {"msg":"uncheck exception"}) }
+                    }
+                }
+            }
+        }
+        Err(err) => { err }
+    }
 }

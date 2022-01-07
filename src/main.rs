@@ -53,13 +53,16 @@ async fn main() -> std::io::Result<()> {
                     .route("/interact-comment/{slug}/{id}", web::get().to(post_service::interact_comment))
                     .route("/save-post/{slug}", web::get().to(post_service::save_post))
                     .route("/follow-tag/{tag}", web::get().to(post_service::follow_tag))
+                    .route("/delete/{slug}", web::get().to(post_service::delete_post))
             ).service(
             web::scope("/user")
-                // TODO Follow new user
+                .route("/follow/{username_following}", web::get().to(user_service::follow_user_toggle))
                 .route("/info/{username}", web::get().to(user_service::get_user))
-                .route("/dashboard", web::get().to(user_service::get_dashboard)))
+                .route("/dashboard", web::get().to(user_service::get_dashboard))
+                .route("/edit-info", web::post().to(user_service::edit_info)))
             .service(
                 web::scope("admin")
+                    .route("/create-admin", web::post().to(user_service::create_admin))
                     .route("/posts", web::get().to(post_service::posts_get))
                     .route("/users", web::get().to(user_service::users_get))
                     .route("/tags", web::get().to(tag_service::get_tags_admin))

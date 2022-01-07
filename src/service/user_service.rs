@@ -7,7 +7,8 @@ use serde::Deserialize;
 use crate::database::post;
 use crate::database::user;
 use crate::database::user::{get_user_by_id, get_user_full, get_user_list_dashboard};
-use crate::dto::user_dto::{CreateAccount, UserPage};
+use crate::dto::user_dto::{CreateAccount, UpdateAccount, UserPage};
+use crate::error::ErrorMessage;
 
 #[derive(Deserialize)]
 pub struct LoginInfo {
@@ -129,7 +130,7 @@ pub async fn check_login(req: HttpRequest) -> Result<i32, HttpResponse> {
             };
         }
         None => {
-            Err(HttpResponse::Unauthorized().json(doc! {"error":"User not login"}))
+            Err(HttpResponse::Unauthorized().json(doc! {"msg":"User not login"}))
         }
     }
 }
@@ -140,7 +141,94 @@ pub(crate) async fn check_admin(id: i32) -> bool {
 
 pub async fn create_list(list: Json<Vec<CreateAccount>>) -> impl Responder {
     for acc in list.0 {
-        user::sign_up(acc).await;
+        match user::sign_up(acc).await {
+            Ok(_) => {}
+            Err(_) => { return HttpResponse::InternalServerError().json(doc! { "msg": "can not create" }); }
+        }
     }
     HttpResponse::Ok().json(doc! {"data":bson::to_bson(&user::get_users().await).unwrap()})
+}
+
+pub async fn follow_user_toggle(req: HttpRequest, username_following: Path<String>) -> impl Responder {
+    return match check_login(req.to_owned()).await {
+        Ok(id) => {
+            match user::follow_user_toggle(id.to_owned(), username_following.0).await {
+                Ok(_) => {
+                    let mut response = doc! {};
+                    let user = get_user_by_id(id).await.unwrap();
+                    let post_list = post::get_post_dashboard(&user).await;
+                    response.insert("post", bson::to_bson(&post_list).unwrap());
+                    let tag_list = post::get_tag_dashboard(&user).await;
+                    response.insert("tag", bson::to_bson(&tag_list).unwrap());
+                    let user_list = get_user_list_dashboard(&user.followed_user).await;
+                    response.insert("following", bson::to_bson(&user_list).unwrap());
+                    HttpResponse::Ok().json(doc! { "data":response})
+                }
+                Err(err) => {
+                    match err {
+                        ErrorMessage::NotFound => {
+                            HttpResponse::NotFound().json(doc! {"msg":"not found user with provided name"})
+                        }
+                        _ => {
+                            HttpResponse::InternalServerError().json(doc! {"msg":"un-check exception"})
+                        }
+                    }
+                }
+            }
+        }
+        Err(err) => {
+            err
+        }
+    };
+}
+
+pub async fn create_admin(req: HttpRequest, acc: Json<CreateAccount>) -> impl Responder {
+    return match check_login(req).await {
+        Ok(user_id) => {
+            if check_admin(user_id).await {
+                match user::create_admin(acc.0).await {
+                    Ok(acc) => {
+                        let mut resp = doc! {"msg":"admin has been created"};
+                        resp.insert("data", bson::to_bson(&acc).unwrap());
+                        HttpResponse::Ok().json(resp)
+                    }
+                    Err(err) => {
+                        match err {
+                            ErrorMessage::ServerError => { HttpResponse::InternalServerError().json(doc! {"msg":"can not create new admin"}) }
+                            ErrorMessage::Duplicate => { HttpResponse::BadRequest().json(doc! {"msg":"username has been used"}) }
+                            _ => { HttpResponse::InternalServerError().json(doc! {"msg":"uncheck exception"}) }
+                        }
+                    }
+                }
+            } else {
+                HttpResponse::Unauthorized().json(doc! {"msg":"only admin can access"})
+            }
+        }
+        Err(err) => { err }
+    };
+}
+
+pub async fn edit_info(req: HttpRequest, account: Json<UpdateAccount>) -> impl Responder {
+    return match check_login(req).await {
+        Ok(id) => {
+            match user::update_info(&id, account.0).await {
+                Ok(_) => {}
+                Err(err) => {
+                    return match err {
+                        _ => { HttpResponse::InternalServerError().json(doc! {"msg":"uncheck exception"}) }
+                    }
+                }
+            }
+            let mut response = doc! {};
+            let user = get_user_by_id(id).await.unwrap();
+            let post_list = post::get_post_dashboard(&user).await;
+            response.insert("post", bson::to_bson(&post_list).unwrap());
+            let tag_list = post::get_tag_dashboard(&user).await;
+            response.insert("tag", bson::to_bson(&tag_list).unwrap());
+            let user_list = get_user_list_dashboard(&user.followed_user).await;
+            response.insert("following", bson::to_bson(&user_list).unwrap());
+            HttpResponse::Ok().json(doc! { "data":response})
+        }
+        Err(err) => { err }
+    }
 }

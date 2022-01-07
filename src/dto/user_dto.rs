@@ -76,6 +76,17 @@ pub struct CreateAccount {
 }
 
 #[derive(Deserialize, Serialize)]
+pub struct UpdateAccount {
+    pub name: Option<String>,
+    #[serde(rename = "privateEmail")]
+    pub private_email: Option<String>,
+    pub password: Option<String>,
+    pub bio: Option<String>,
+    pub avatar: Option<String>,
+    pub website: Option<String>,
+}
+
+#[derive(Deserialize, Serialize)]
 pub struct UserPage {
     pub name: String,
     pub username: String,
