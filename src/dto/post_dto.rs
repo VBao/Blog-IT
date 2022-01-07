@@ -1,5 +1,6 @@
+use serde::{Deserialize, Serialize};
+
 use crate::model::post::{Comment, Post, Status};
-use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct CreatePost {
@@ -47,6 +48,7 @@ pub struct Index {
     #[serde(rename = "userName")]
     pub user_name: String,
     pub slug: String,
+    pub banner: String,
     pub title: String,
     #[serde(rename = "createdAt")]
     pub created_at: chrono::DateTime<chrono::Utc>,
@@ -159,6 +161,7 @@ pub struct PostDetail {
     pub saved_count: i32,
     pub followed: bool,
     pub interacted: bool,
+    pub saved: bool
 }
 
 impl From<Post> for PostDetail {
@@ -186,6 +189,7 @@ impl From<Post> for PostDetail {
             saved_count: post.saved_by_user.len() as i32,
             followed: false,
             interacted: false,
+            saved: false
         }
     }
 }
@@ -224,6 +228,35 @@ impl From<Comment> for PostDetailComment {
             interact: c.interact,
             parent_id: c.parent_id,
             interacted: false,
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct ShortPostAdmin {
+    pub slug: String,
+    pub title: String,
+    pub username: String,
+    pub interact: i32,
+    pub comment: i32,
+    #[serde(rename = "createdAt")]
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    #[serde(rename = "updatedAt")]
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub tags: Vec<String>,
+}
+
+impl From<Post> for ShortPostAdmin {
+    fn from(post: Post) -> Self {
+        ShortPostAdmin {
+            slug: post.slug,
+            title: post.title,
+            username: post.user_username,
+            interact: post.reaction_count,
+            comment: post.comment_count,
+            created_at: post.created_at,
+            updated_at: post.updated_at,
+            tags: post.tag,
         }
     }
 }

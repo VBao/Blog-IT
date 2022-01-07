@@ -1,17 +1,19 @@
 use std::borrow::Borrow;
+
 use actix_web::{HttpRequest, HttpResponse, Responder, web};
 use actix_web::web::{Json, Path};
-use crate::database::post;
 use mongodb::bson::doc;
-use crate::database::post::find_by_tag;
-use crate::database::user;
-use crate::database::user::{get_user_by_id};
+
+use crate::database::post;
+use crate::database::post::{find_by_tag, posts};
 use crate::database::tag;
-use crate::error::ErrorMessage;
+use crate::database::user;
+use crate::database::user::{get_user_by_id, get_user_list_dashboard};
 use crate::dto::post_dto::*;
 use crate::dto::user_dto::SmallAccount;
+use crate::error::ErrorMessage;
 use crate::model::user::Account;
-use crate::service::user_service::check_login;
+use crate::service::user_service::{check_admin, check_login};
 
 pub async fn create_post(id: HttpRequest, post: Json<CreatePost>) -> impl Responder {
     return match check_login(id).await {
@@ -63,8 +65,18 @@ pub async fn change_status(id: HttpRequest, slug: Path<String>) -> impl Responde
 pub async fn add_comment(id: HttpRequest, comment: Json<CreateComment>) -> impl Responder {
     match check_login(id).await {
         Ok(user_id) => {
-            post::add_comment(comment.0, user::get_user_by_id(user_id).await.unwrap()).await;
-            HttpResponse::Ok().finish()
+            match post::add_comment(comment.0, user::get_user_by_id(user_id).await.unwrap()).await {
+                Ok(post) => {
+                    let mut res = doc! {};
+                    let post_res = bson::to_bson(&post).unwrap();
+                    res.insert("data", &post_res);
+                    res.insert("msg", "created comment");
+                    HttpResponse::Ok().json(res)
+                }
+                Err(err) => {
+                    HttpResponse::NotFound().json(doc! {"msg":&err})
+                }
+            }
         }
         Err(err) => { err }
     }
@@ -219,14 +231,11 @@ pub async fn get_tag(id: HttpRequest, value: Path<String>) -> impl Responder {
         }
         Err(err) => {
             match err {
-                // ErrorMessage::NotOwned => {}
                 ErrorMessage::NotFound => {
                     let msg = format!("Not found tag with value {}", value);
                     HttpResponse::NotFound().json(doc! {"error":msg})
                 }
-                // ErrorMessage::Unauthorized => {}
                 ErrorMessage::ServerError => { HttpResponse::InternalServerError().json(doc! {"error":"Sorry we not validate this error"}) }
-                // ErrorMessage::Duplicate => {}
                 _ => { HttpResponse::InternalServerError().json(doc! {"error":"Sorry we not validate this error"}) }
             }
         }
@@ -269,4 +278,89 @@ pub async fn save_post(req: HttpRequest, slug: Path<String>) -> impl Responder {
         }
         Err(err) => { err }
     };
+}
+
+pub async fn follow_tag(req: HttpRequest, tag: Path<String>) -> impl Responder {
+    return match check_login(req).await {
+        Ok(id) => {
+            return match post::toggle_follow_tag(id.to_owned(), tag.0).await {
+                Ok(_) => {
+                    let mut res = doc! {};
+                    res.insert("msg", "follow/unfollow tag success");
+                    res.insert("data", bson::to_bson(&tag::get_tags(Some(id)).await).unwrap());
+                    HttpResponse::Ok().json(res)
+                }
+                Err(err) => {
+                    match err {
+                        ErrorMessage::NotFound => { HttpResponse::NotFound().json(doc! {"msg":"tag not found"}) }
+                        _ => { HttpResponse::InternalServerError().json(doc! { "msg": "uncheck exception" }) }
+                    }
+                }
+            };
+        }
+        Err(err) => { err }
+    };
+}
+
+pub async fn posts_get(req: HttpRequest) -> impl Responder {
+    match check_login(req).await {
+        Ok(id) => {
+            if check_admin(id).await {
+                let mut res = doc! {};
+                let val = posts().await;
+                res.insert("msg", "success");
+                res.insert("data", bson::to_bson(&val).unwrap());
+                HttpResponse::Ok().json(res)
+            } else {
+                HttpResponse::Unauthorized().json(doc! {"msg":"only admin can access"})
+            }
+        }
+        Err(err) => { err }
+    }
+}
+
+pub async fn create_list(req: HttpRequest, list: Json<Vec<CreatePost>>) -> impl Responder {
+    return match check_login(req).await {
+        Ok(user_id) => {
+            let user = user::get_user_by_id(user_id).await.unwrap();
+            for post in list.0 {
+                post::create_post(user.to_owned(), post).await;
+            }
+            let mut res = doc! {};
+            let val = posts().await;
+            res.insert("msg", "success");
+            res.insert("data", bson::to_bson(&val).unwrap());
+            HttpResponse::Ok().json(res)
+        }
+        Err(err) => { err }
+    };
+}
+
+pub async fn delete_post(req: HttpRequest, slug: Path<String>) -> impl Responder {
+    return match check_login(req).await {
+        Ok(user_id) => {
+            match post::delete_post(&user_id, slug.0).await {
+                Ok(_) => {
+                    let mut response = doc! {};
+                    let user = get_user_by_id(user_id).await.unwrap();
+                    let post_list = post::get_post_dashboard(&user).await;
+                    response.insert("post", bson::to_bson(&post_list).unwrap());
+                    let tag_list = post::get_tag_dashboard(&user).await;
+                    response.insert("tag", bson::to_bson(&tag_list).unwrap());
+                    let user_list = get_user_list_dashboard(&user.followed_user).await;
+                    response.insert("following", bson::to_bson(&user_list).unwrap());
+                    HttpResponse::Ok().json(doc! { "data":response})
+                }
+                Err(err) => {
+                    match err {
+                        ErrorMessage::NotFound => { HttpResponse::NotFound().json(doc! {"msg":"not found post with provided slug"}) }
+                        ErrorMessage::Unauthorized => { HttpResponse::Unauthorized().json(doc! {"msg":"you not owned this post"}) }
+                        ErrorMessage::ServerError => { HttpResponse::InternalServerError().json(doc! {"msg":"can not delete post"}) }
+                        _ => { HttpResponse::InternalServerError().json(doc! {"msg":"uncheck exception"}) }
+                    }
+                }
+            }
+        }
+        Err(err) => { err }
+    }
 }

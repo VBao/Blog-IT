@@ -1,13 +1,17 @@
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
+use crate::dto::user_dto::CreateAccount;
 
-#[derive(Deserialize, Serialize,Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub enum Status {
     Activated,
     Banned,
+    Unactivated,
     Pending,
+    Graduated
 }
 
-#[derive(Deserialize, Serialize,Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Account {
     #[serde(rename = "_id")]
     pub id: i32,
@@ -40,6 +44,30 @@ pub struct Account {
     pub followed_user: Vec<i32>,
 }
 
+
+impl From<CreateAccount> for Account {
+    fn from(acc: CreateAccount) -> Self {
+        Account {
+            id: 0,
+            name: acc.name,
+            username: acc.username,
+            school_email: acc.school_email,
+            private_email: acc.private_email,
+            bio: if acc.bio.is_some() { acc.bio.unwrap() } else { "".to_string() },
+            password: acc.password,
+            avatar: if acc.avatar.is_some() { acc.avatar.unwrap() } else { "".to_string() },
+            admin: false,
+            website: if acc.website.is_some() { acc.website.unwrap() } else { "".to_string() },
+            last_access: Utc::now(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            status: Status::Activated,
+            followed_tag: vec![],
+            reading_list: vec![],
+            followed_user: vec![],
+        }
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Claim {

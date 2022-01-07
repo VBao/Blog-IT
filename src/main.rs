@@ -1,11 +1,12 @@
-mod service;
-pub mod database;
-
 use actix_cors::Cors;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
-use actix_web::{web, App, HttpServer};
+use actix_web::{App, HttpServer, web};
 use actix_web::middleware::Logger;
+
 use service::*;
+
+mod service;
+pub mod database;
 
 mod model;
 mod error;
@@ -51,17 +52,27 @@ async fn main() -> std::io::Result<()> {
                     .route("/reading/{slug_id}", web::get().to(post_service::reading))
                     .route("/interact-comment/{slug}/{id}", web::get().to(post_service::interact_comment))
                     .route("/save-post/{slug}", web::get().to(post_service::save_post))
+                    .route("/follow-tag/{tag}", web::get().to(post_service::follow_tag))
+                    .route("/delete/{slug}", web::get().to(post_service::delete_post))
             ).service(
-            web::scope("/admin")
-        ).service(
             web::scope("/user")
-                // TODO Follow new user
+                .route("/follow/{username_following}", web::get().to(user_service::follow_user_toggle))
                 .route("/info/{username}", web::get().to(user_service::get_user))
                 .route("/dashboard", web::get().to(user_service::get_dashboard))
-                .service(
-                    web::scope("admin")
-                        .route("/users", web::get().to(user_service::users_get))
-                )
+                .route("/edit-info", web::post().to(user_service::edit_info)))
+            .service(
+                web::scope("admin")
+                    .route("/create-admin", web::post().to(user_service::create_admin))
+                    .route("/posts", web::get().to(post_service::posts_get))
+                    .route("/users", web::get().to(user_service::users_get))
+                    .route("/tags", web::get().to(tag_service::get_tags_admin))
+                    .route("/update-tag", web::post().to(tag_service::update_tag))
+                    .route("/create-tag", web::post().to(tag_service::create_tag))
+            ).service(
+            web::scope("run-one")
+                .route("/tag", web::post().to(tag_service::create_list))
+                .route("/post", web::post().to(post_service::create_list))
+                .route("/user", web::post().to(user_service::create_list))
         )
     })
         .bind("0.0.0.0:8040")?

@@ -1,5 +1,6 @@
-use serde::{Serialize, Deserialize};
-use crate::model::user::{Account};
+use serde::{Deserialize, Serialize};
+
+use crate::model::user::Account;
 
 #[derive(Deserialize, Serialize)]
 pub struct AccountStore {
@@ -38,6 +39,7 @@ impl From<Account> for AccountStore {
 pub struct ShowAccountAdmin {
     name: String,
     username: String,
+    #[serde(rename = "schoolEmail")]
     school_email: String,
     email: String,
     avatar: String,
@@ -61,11 +63,27 @@ impl From<Account> for ShowAccountAdmin {
 pub struct CreateAccount {
     pub name: String,
     pub username: String,
+    #[serde(rename = "schoolEmail")]
     pub school_email: String,
+    #[serde(rename = "privateEmail")]
     pub private_email: String,
     pub password: String,
     #[serde(rename = "followedTag")]
     pub followed_tag: Option<Vec<i32>>,
+    pub bio: Option<String>,
+    pub avatar: Option<String>,
+    pub website: Option<String>,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct UpdateAccount {
+    pub name: Option<String>,
+    #[serde(rename = "privateEmail")]
+    pub private_email: Option<String>,
+    pub password: Option<String>,
+    pub bio: Option<String>,
+    pub avatar: Option<String>,
+    pub website: Option<String>,
 }
 
 #[derive(Deserialize, Serialize)]
