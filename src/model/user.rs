@@ -1,5 +1,6 @@
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
+
 use crate::dto::user_dto::CreateAccount;
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -8,7 +9,7 @@ pub enum Status {
     Banned,
     Unactivated,
     Pending,
-    Graduated
+    Graduated,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]

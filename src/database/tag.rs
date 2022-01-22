@@ -129,9 +129,9 @@ pub async fn create_tag(tag_create: CreateTag) -> Result<Vec<TagAdmin>, ErrorMes
                 post: 0,
                 moderator: vec![],
             };
-            match col.insert_one(tag, None).await{
+            match col.insert_one(tag, None).await {
                 Ok(_) => {}
-                Err(_) => {return Err(ErrorMessage::ServerError)}
+                Err(_) => { return Err(ErrorMessage::ServerError); }
             }
             Ok(tags().await)
         }
