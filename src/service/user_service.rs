@@ -216,7 +216,7 @@ pub async fn edit_info(req: HttpRequest, account: Json<UpdateAccount>) -> impl R
                 Err(err) => {
                     return match err {
                         _ => { HttpResponse::InternalServerError().json(doc! {"msg":"uncheck exception"}) }
-                    }
+                    };
                 }
             }
             let mut response = doc! {};
@@ -230,5 +230,5 @@ pub async fn edit_info(req: HttpRequest, account: Json<UpdateAccount>) -> impl R
             HttpResponse::Ok().json(doc! { "data":response})
         }
         Err(err) => { err }
-    }
+    };
 }

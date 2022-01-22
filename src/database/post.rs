@@ -380,7 +380,7 @@ pub async fn search_comment_content_by_username(account: &Option<Account>, usern
     let sort = FindOptions::builder().sort(doc! {
         "comment.createdAt":-1
     }).build();
-    let mut cursor = col.find(doc! {"comment.username":username.to_owned()}, sort).await.unwrap();
+    let mut cursor = col.find(doc! {"comment.userUserName":username.to_owned()}, sort).await.unwrap();
     while let Some(post) = cursor.try_next().await.unwrap() {
         for comment in post.comment.to_owned() {
             if &comment.user_username == username {
@@ -625,30 +625,16 @@ pub async fn get_post(user_id: Option<&i32>, slug: String) -> Result<PostDetail,
         None => { Ok(PostDetail::from(post)) }
         Some(usr_id) => {
             let mut result = PostDetail::from(post.to_owned());
+            result.comment = Vec::new();
             result.interacted = post.reaction_list.contains(usr_id);
             result.saved = post.saved_by_user.contains(usr_id);
             for com in post.comment.iter() {
                 let mut comment = PostDetailComment::from(com.to_owned());
                 if com.interact_list.contains(usr_id) {
                     comment.interacted = true;
-                    result.comment.push(comment)
                 }
+                result.comment.push(comment);
             }
-            // TODO Check follow user or not
-            // let user_col = connect_user().await;
-            // let user_rs = user_col.find_one(doc! {"_id":&id}, None).await.unwrap();
-            // match user_rs {
-            //     Some(usr) => {
-            //         if post. { }
-            //     }
-            //     None => {
-            //         let rs = get_post(None, slug).await;
-            //         return match rs {
-            //             Ok(dat) => { Ok(dat) }
-            //             Err(_) => { Err(ErrorMessage::ServerError) }
-            //         };
-            //     }
-            // }
             Ok(result)
         }
     }

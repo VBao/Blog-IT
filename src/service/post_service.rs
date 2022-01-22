@@ -362,5 +362,5 @@ pub async fn delete_post(req: HttpRequest, slug: Path<String>) -> impl Responder
             }
         }
         Err(err) => { err }
-    }
+    };
 }
