@@ -33,6 +33,7 @@ async fn main() -> std::io::Result<()> {
                     .name("authorization")
                     .secure(false),
             ))
+            .data(web::JsonConfig::default().limit(1024 * 1024 * 50))
             .route("/login", web::post().to(user_service::login))
             .route("/signup", web::post().to(user_service::sign_up))
             .route("/index/{page}", web::get().to(post_service::index))
