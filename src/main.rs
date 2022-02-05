@@ -33,6 +33,8 @@ async fn main() -> std::io::Result<()> {
                     .name("authorization")
                     .secure(false),
             ))
+            .data(web::PayloadConfig::new(1 << 25))
+            .data(web::JsonConfig::default().limit(1024 * 1024 * 50))
             .route("/login", web::post().to(user_service::login))
             .route("/signup", web::post().to(user_service::sign_up))
             .route("/index/{page}", web::get().to(post_service::index))
@@ -53,7 +55,7 @@ async fn main() -> std::io::Result<()> {
                     .route("/interact-comment/{slug}/{id}", web::get().to(post_service::interact_comment))
                     .route("/save-post/{slug}", web::get().to(post_service::save_post))
                     .route("/follow-tag/{tag}", web::get().to(post_service::follow_tag))
-                    .route("/delete/{slug}", web::get().to(post_service::delete_post))
+                    .route("/delete/{slug}", web::delete().to(post_service::delete_post))
             ).service(
             web::scope("/user")
                 .route("/follow/{username_following}", web::get().to(user_service::follow_user_toggle))

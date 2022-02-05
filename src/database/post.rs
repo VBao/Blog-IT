@@ -13,7 +13,7 @@ use slug::slugify;
 use crate::constant::MONGODB_URL;
 use crate::database::tag;
 use crate::database::user::{connect as connect_user, get_user_by_id};
-use crate::dto::post_dto::{CommentDetail, CommentInfoPage, CreateComment, CreatePost, Index, PostDetail, PostDetailComment, ShortPostAdmin, UpdateComment, UpdatePost};
+use crate::dto::post_dto::{CommentDetail, CommentInfoPage, CreateComment, CreatePost, Index, PostDetail, PostDetailComment, ShortPost, ShortPostAdmin, UpdateComment, UpdatePost};
 use crate::dto::tag_dto::TagList;
 use crate::error::ErrorMessage;
 use crate::model::post::*;
@@ -86,6 +86,7 @@ pub async fn connection_tag() -> Collection<Tag> {
 
 pub async fn create_post(account: Account, create: CreatePost) -> PostDetail {
     let col = connection_post().await;
+    let tag_col = connection_tag().await;
     let now: DateTime<Utc> = Utc::now();
     let sort = FindOneOptions::builder().sort(doc! {"_id":-1}).build();
     let last_post = col.borrow().find_one(None, sort).await.unwrap();
@@ -112,8 +113,16 @@ pub async fn create_post(account: Account, create: CreatePost) -> PostDetail {
     };
     let insert = col.insert_one(post, None).await;
     let inserted_id = insert.unwrap().inserted_id.as_i32().unwrap();
-    let val = col.find_one(doc! { "_id":inserted_id }, None).await.unwrap();
-    return PostDetail::from(val.unwrap());
+    let val = col.find_one(doc! { "_id":inserted_id }, None).await.unwrap().unwrap();
+
+    for tag_val in &val.tag {
+        let tag = tag_col.find_one(doc! {"value":tag_val}, None).await.unwrap().unwrap();
+        match tag_col.update_one(doc! {"_id":tag.id}, doc! {"$set":{"post":tag.post+1}}, None).await {
+            Ok(_) => {}
+            Err(err) => { std::panic::panic_any(err) }
+        }
+    }
+    return PostDetail::from(val);
 }
 
 
@@ -250,9 +259,9 @@ pub async fn update_comment(comment: UpdateComment, account: Account) -> Result<
 pub async fn add_interact(slug: String, user_id: i32) -> Result<PostDetail, ErrorMessage> {
     let post_col = connection_post().await;
     let post_opt = post_col.find_one(doc! {"slug":slug.to_string()}, None).await.unwrap();
-    match post_opt {
+    return match post_opt {
         None => {
-            return Err(ErrorMessage::NotFound);
+            Err(ErrorMessage::NotFound)
         }
         Some(post) => {
             if *&post.status == Status::Draft {
@@ -299,12 +308,12 @@ pub async fn add_interact(slug: String, user_id: i32) -> Result<PostDetail, Erro
                 }
             }
 
-            return match get_post(Some(&user_id), slug).await {
+            match get_post(Some(&user_id), slug).await {
                 Ok(post_rs) => { Ok(post_rs) }
                 Err(_) => { Err(ErrorMessage::ServerError) }
-            };
+            }
         }
-    }
+    };
 }
 
 pub async fn remove_interact(slug: String, user_id: i32) -> Result<(), ErrorMessage> {
@@ -551,15 +560,15 @@ pub async fn reading_process(account: Account, slug: String) -> Result<PostDetai
                     Ok(_) => {}
                     Err(_) => { return Err("can not update".to_string()); }
                 }
-                match user_col.update_one(doc! { "_id":account.id}, doc! {"$push":{"readingList":p.id}}, None).await {
+                return match user_col.update_one(doc! { "_id":account.id}, doc! {"$push":{"readingList":p.id}}, None).await {
                     Ok(_) => {
-                        return match get_post(Some(&account.id), slug).await {
+                        match get_post(Some(&account.id), slug).await {
                             Ok(post_rs) => { Ok(post_rs) }
                             Err(_) => { return Err("Internal Server Error".to_string()); }
-                        };
+                        }
                     }
-                    Err(_err) => { return Err("Can not add interact".to_string()); }
-                }
+                    Err(_err) => { Err("Can not add interact".to_string()) }
+                };
             }
         }
     };
@@ -596,15 +605,16 @@ pub async fn find_by_tag(user_id: Option<i32>, tag: String) -> Vec<Index> {
     result
 }
 
-pub async fn get_post_dashboard(account: &Account) -> Vec<PostDetail> {
-    let mut result: Vec<PostDetail> = vec![];
+pub async fn get_post_dashboard(account: &Account) -> Vec<ShortPost> {
+    let mut result: Vec<ShortPost> = vec![];
     let col = connection_post().await;
     let mut cursor = col.find(doc! {"userUserName":&account.username}, None).await.unwrap();
     while let Some(post) = cursor.try_next().await.unwrap() {
-        let mut post_detail = PostDetail::from(post.to_owned());
-        if post.reaction_list.contains(&account.id) {
-            post_detail.interacted = true;
-        }
+        let post_detail = ShortPost::from(post.to_owned());
+        // let mut post_detail = PostDetail::from(post.to_owned());
+        // if post.reaction_list.contains(&account.id) {
+        //     post_detail.interacted = true;
+        // }
         result.push(post_detail);
     }
     result
@@ -671,7 +681,7 @@ pub async fn toggle_save_post(user_id: i32, slug: String) -> Result<PostDetail, 
     return Ok(PostDetail::from(result_post));
 }
 
-pub async fn toggle_follow_tag(user_id: i32, tag_val: String) -> Result<(), ErrorMessage> {
+pub async fn toggle_follow_tag(user_id: i32, tag_val: String) -> Result<bool, ErrorMessage> {
     let tag_col = connection_tag().await;
     let user_col = connect_user().await;
     let tag = match tag_col.find_one(doc! {"value":tag_val}, None).await.unwrap() {
@@ -679,24 +689,27 @@ pub async fn toggle_follow_tag(user_id: i32, tag_val: String) -> Result<(), Erro
         Some(value) => { value }
     };
 
-    match user_col.find_one(doc! {"$and":[
+    return match user_col.find_one(doc! {"$and":[
         {"_id":&user_id},
         {"followedTag":{"$in":[&tag.id]}}
     ]}, None).await.unwrap() {
         None => {
             match user_col.update_one(doc! {"_id":&user_id}, doc! {"$push":{"followedTag":&tag.id}}, None).await {
-                Ok(_) => {}
-                Err(_) => { return Err(ErrorMessage::ServerError); }
+                Ok(_) => {
+                    Ok(true)
+                }
+                Err(_) => { Err(ErrorMessage::ServerError) }
             }
         }
         Some(_) => {
             match user_col.update_one(doc! {"_id":&user_id}, doc! {"$pull":{"followedTag":&tag.id}}, None).await {
-                Ok(_) => {}
-                Err(_) => { return Err(ErrorMessage::ServerError); }
+                Ok(_) => {
+                    Ok(false)
+                }
+                Err(_) => { Err(ErrorMessage::ServerError) }
             }
         }
     }
-    return Ok(());
 }
 
 pub async fn posts() -> Vec<ShortPostAdmin> {
@@ -717,6 +730,8 @@ pub async fn posts() -> Vec<ShortPostAdmin> {
 pub async fn delete_post(user_id: &i32, slug: String) -> Result<(), ErrorMessage> {
     let col = connection_post().await;
     let user_col = connect_user().await;
+    let tag_col = connection_tag().await;
+
     let user = user_col.find_one(doc! {"_id":user_id}, None).await.unwrap().unwrap();
     let post_opt = col.find_one(doc! {"slug":&slug}, None).await.unwrap();
     return match post_opt {
@@ -725,10 +740,20 @@ pub async fn delete_post(user_id: &i32, slug: String) -> Result<(), ErrorMessage
             if post.user_username != user.username {
                 return Err(ErrorMessage::Unauthorized);
             }
+
+            for tag_val in &post.tag {
+                let tag = tag_col.find_one(doc! {"value":tag_val}, None).await.unwrap().unwrap();
+                match tag_col.update_one(doc! {"_id":tag.id}, doc! {"$set":{"post":tag.post-1}}, None).await {
+                    Ok(_) => {}
+                    Err(err) => { std::panic::panic_any(err) }
+                }
+            }
+
             match col.delete_one(doc! {"slug":&slug}, None).await {
                 Ok(_) => {}
                 Err(_) => { return Err(ErrorMessage::ServerError); }
             }
+
             let user_col = connect_user().await;
             match user_col.update_many(doc! {"readingList":&post.id}, doc! {"$pull":{"readingList":&post.id}}, None).await {
                 Ok(_) => { Ok(()) }

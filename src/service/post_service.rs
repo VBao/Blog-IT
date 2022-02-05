@@ -136,6 +136,7 @@ pub async fn search(id: HttpRequest, keyword: Path<String>) -> impl Responder {
     let mut result = doc! {};
     let post_rs = post::search_post(user.borrow(), keyword.0.to_owned()).await;
     result.insert("post", bson::to_bson(&post_rs).unwrap());
+    result.insert("isFull", ((*&post_rs.len() as i32) < 15) as bool);
     let comment_rs = post::search_comment_post(user.borrow(), keyword.0.to_owned()).await;
     result.insert("comment", bson::to_bson(&comment_rs).unwrap());
     let user_rs = match user
@@ -178,16 +179,14 @@ pub async fn interact_comment(identity: HttpRequest, web::Path((slug, id)): web:
 
 
 pub async fn index(req: HttpRequest, page: web::Path<i32>) -> impl Responder {
-    return match check_login(req).await {
-        Ok(user_id) => {
-            let rs = post::index(Some(user_id), page.0).await;
-            HttpResponse::Ok().json(doc! {"data":bson::to_bson(&rs).unwrap()})
-        }
-        Err(_) => {
-            let rs = post::index(None, page.0).await;
-            HttpResponse::Ok().json(doc! {"data":bson::to_bson(&rs).unwrap()})
-        }
+    let val = match check_login(req).await {
+        Ok(user_id) => { post::index(Some(user_id), page.0).await }
+        Err(_) => { post::index(None, page.0).await }
     };
+    HttpResponse::Ok().json(doc! {
+                "data":bson::to_bson(&val).unwrap(),
+                "isFull":((*&val.len() as i32)<15 ) as bool
+    })
 }
 
 pub async fn reading(id: HttpRequest, slug: web::Path<String>) -> impl Responder {
@@ -284,9 +283,10 @@ pub async fn follow_tag(req: HttpRequest, tag: Path<String>) -> impl Responder {
     return match check_login(req).await {
         Ok(id) => {
             return match post::toggle_follow_tag(id.to_owned(), tag.0).await {
-                Ok(_) => {
+                Ok(follow) => {
                     let mut res = doc! {};
                     res.insert("msg", "follow/unfollow tag success");
+                    res.insert("follow", follow);
                     res.insert("data", bson::to_bson(&tag::get_tags(Some(id)).await).unwrap());
                     HttpResponse::Ok().json(res)
                 }
