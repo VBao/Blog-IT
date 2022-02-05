@@ -681,7 +681,7 @@ pub async fn toggle_save_post(user_id: i32, slug: String) -> Result<PostDetail, 
     return Ok(PostDetail::from(result_post));
 }
 
-pub async fn toggle_follow_tag(user_id: i32, tag_val: String) -> Result<(), ErrorMessage> {
+pub async fn toggle_follow_tag(user_id: i32, tag_val: String) -> Result<bool, ErrorMessage> {
     let tag_col = connection_tag().await;
     let user_col = connect_user().await;
     let tag = match tag_col.find_one(doc! {"value":tag_val}, None).await.unwrap() {
@@ -689,24 +689,27 @@ pub async fn toggle_follow_tag(user_id: i32, tag_val: String) -> Result<(), Erro
         Some(value) => { value }
     };
 
-    match user_col.find_one(doc! {"$and":[
+    return match user_col.find_one(doc! {"$and":[
         {"_id":&user_id},
         {"followedTag":{"$in":[&tag.id]}}
     ]}, None).await.unwrap() {
         None => {
             match user_col.update_one(doc! {"_id":&user_id}, doc! {"$push":{"followedTag":&tag.id}}, None).await {
-                Ok(_) => {}
-                Err(_) => { return Err(ErrorMessage::ServerError); }
+                Ok(_) => {
+                    Ok(true)
+                }
+                Err(_) => { Err(ErrorMessage::ServerError) }
             }
         }
         Some(_) => {
             match user_col.update_one(doc! {"_id":&user_id}, doc! {"$pull":{"followedTag":&tag.id}}, None).await {
-                Ok(_) => {}
-                Err(_) => { return Err(ErrorMessage::ServerError); }
+                Ok(_) => {
+                    Ok(false)
+                }
+                Err(_) => { Err(ErrorMessage::ServerError) }
             }
         }
     }
-    return Ok(());
 }
 
 pub async fn posts() -> Vec<ShortPostAdmin> {

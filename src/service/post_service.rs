@@ -283,9 +283,10 @@ pub async fn follow_tag(req: HttpRequest, tag: Path<String>) -> impl Responder {
     return match check_login(req).await {
         Ok(id) => {
             return match post::toggle_follow_tag(id.to_owned(), tag.0).await {
-                Ok(_) => {
+                Ok(follow) => {
                     let mut res = doc! {};
                     res.insert("msg", "follow/unfollow tag success");
+                    res.insert("follow", follow);
                     res.insert("data", bson::to_bson(&tag::get_tags(Some(id)).await).unwrap());
                     HttpResponse::Ok().json(res)
                 }
