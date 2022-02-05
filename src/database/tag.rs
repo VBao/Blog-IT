@@ -146,11 +146,7 @@ pub async fn update(tag_update: UpdateTag) -> Result<Vec<TagAdmin>, ErrorMessage
         None => { Err(ErrorMessage::NotFound) }
         Some(mut tag) => {
             if tag_update.value.is_some() {
-                if col.find_one(doc! {"value":&tag_update.value}, None).await.unwrap().is_some() {
-                    return Err(ErrorMessage::Duplicate);
-                } else {
-                    tag.value = tag_update.value.unwrap()
-                }
+                tag.value = tag_update.value.unwrap()
             }
             if tag_update.desc.is_some() { tag.desc = tag_update.desc.unwrap() }
             if tag_update.color.is_some() { tag.color = tag_update.color.unwrap() }
