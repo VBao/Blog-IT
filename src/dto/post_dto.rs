@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use crate::dto::user_dto::PostDetailUser;
 
 use crate::model::post::{Comment, Post, Status};
 
@@ -259,4 +260,31 @@ impl From<Post> for ShortPostAdmin {
             tags: post.tag,
         }
     }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct MorePost {
+    pub slug: String,
+    pub title:String,
+    pub tag: Vec<String>,
+}
+
+impl From<Post> for MorePost {
+    fn from(post: Post) -> Self {
+        MorePost {
+            slug: post.slug,
+            title: post.title,
+            tag: post.tag,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct PostDetailPage {
+    #[serde(rename = "morePost")]
+    pub more_post: Vec<MorePost>,
+    #[serde(rename = "userInfo")]
+    pub user_info: PostDetailUser,
+    #[serde(rename = "postDetail")]
+    pub post_detail: PostDetail,
 }

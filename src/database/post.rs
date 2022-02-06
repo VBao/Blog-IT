@@ -13,8 +13,9 @@ use slug::slugify;
 use crate::constant::MONGODB_URL;
 use crate::database::tag;
 use crate::database::user::{connect as connect_user, get_user_by_id};
-use crate::dto::post_dto::{CommentDetail, CommentInfoPage, CreateComment, CreatePost, Index, PostDetail, PostDetailComment, ShortPost, ShortPostAdmin, UpdateComment, UpdatePost};
+use crate::dto::post_dto::{CommentDetail, CommentInfoPage, CreateComment, CreatePost, Index, MorePost, PostDetail, PostDetailComment, PostDetailPage, ShortPost, ShortPostAdmin, UpdateComment, UpdatePost};
 use crate::dto::tag_dto::TagList;
+use crate::dto::user_dto::PostDetailUser;
 use crate::error::ErrorMessage;
 use crate::model::post::*;
 use crate::model::tag::Tag;
@@ -256,7 +257,7 @@ pub async fn update_comment(comment: UpdateComment, account: Account) -> Result<
     Ok(PostDetail::from(post))
 }
 
-pub async fn add_interact(slug: String, user_id: i32) -> Result<PostDetail, ErrorMessage> {
+pub async fn add_interact(slug: String, user_id: i32) -> Result<PostDetailPage, ErrorMessage> {
     let post_col = connection_post().await;
     let post_opt = post_col.find_one(doc! {"slug":slug.to_string()}, None).await.unwrap();
     return match post_opt {
@@ -430,7 +431,7 @@ pub async fn search_comment_content_by_username(account: &Option<Account>, usern
     result
 }
 
-pub async fn interact_comment(slug: String, id: i32, user_id: i32) -> Result<PostDetail, ErrorMessage> {
+pub async fn interact_comment(slug: String, id: i32, user_id: i32) -> Result<PostDetailPage, ErrorMessage> {
     let post_col = connection_post().await;
     let post = post_col.find_one(doc! {"slug":&slug}, None).await.unwrap().unwrap();
     let mut count = 0;
@@ -534,7 +535,7 @@ pub async fn index(user_id: Option<i32>, page: i32) -> Vec<Index> {
     return map_index(cursor, &account).await;
 }
 
-pub async fn reading_process(account: Account, slug: String) -> Result<PostDetail, String> {
+pub async fn reading_process(account: Account, slug: String) -> Result<PostDetailPage, String> {
     let user_col = connect_user().await;
     let post_col = connection_post().await;
     let post = post_col.find_one(doc! {"slug":slug.to_owned()}, None).await.unwrap();
@@ -624,30 +625,69 @@ pub async fn get_tag_dashboard(account: &Account) -> Vec<TagList> {
     return tag::find_list_followed_tag(&account.followed_tag).await;
 }
 
-pub async fn get_post(user_id: Option<&i32>, slug: String) -> Result<PostDetail, ErrorMessage> {
+pub async fn get_post(user_id: Option<&i32>, slug: String) -> Result<PostDetailPage, ErrorMessage> {
     let col = connection_post().await;
+    let user_col = connect_user().await;
+
     let cursor = col.find_one(doc! {"slug":slug.to_owned()}, None).await.unwrap();
     let post = match cursor {
         None => { return Err(ErrorMessage::NotFound); }
         Some(p) => { p }
     };
-    match user_id {
-        None => { Ok(PostDetail::from(post)) }
+    let posted_user = user_col.find_one(doc! {"username":&post.user_username}, None).await.unwrap().unwrap();
+
+//  Post Detail
+    let (post_detail, post_user) = match user_id {
+        None => { (PostDetail::from(post), PostDetailUser::from(posted_user)) }
         Some(usr_id) => {
-            let mut result = PostDetail::from(post.to_owned());
-            result.comment = Vec::new();
-            result.interacted = post.reaction_list.contains(usr_id);
-            result.saved = post.saved_by_user.contains(usr_id);
+            let mut post_detail_result = PostDetail::from(post.to_owned());
+            post_detail_result.comment = Vec::new();
+            post_detail_result.interacted = post.reaction_list.contains(usr_id);
+            post_detail_result.saved = post.saved_by_user.contains(usr_id);
             for com in post.comment.iter() {
                 let mut comment = PostDetailComment::from(com.to_owned());
                 if com.interact_list.contains(usr_id) {
                     comment.interacted = true;
                 }
-                result.comment.push(comment);
+                post_detail_result.comment.push(comment);
             }
-            Ok(result)
+            // Check followed user
+            let reader_user = user_col.find_one(doc! {"_id":user_id}, None).await.unwrap().unwrap();
+            let post_user = PostDetailUser {
+                username: posted_user.username,
+                name: posted_user.name,
+                avatar: posted_user.avatar,
+                followed: reader_user.followed_user.contains(&posted_user.id),
+                bio: posted_user.bio,
+            };
+
+            (post_detail_result, post_user)
         }
-    }
+    };
+
+//  More Post
+    let more_post = {
+        let mut result: Vec<MorePost> = Vec::new();
+        let find_option = FindOptions::builder().sort(doc! {
+            "createdAt":-1,
+            "reactionCount":-1,
+            "commentCount":-1
+        }).limit(5).build();
+        let mut cursor = col.find(doc! {"$and":[
+            {"status":"Published"},
+            {"userUserName":&post_detail.user_username},
+        ]}, find_option).await.unwrap();
+        while let Some(post_detail) = cursor.try_next().await.unwrap() {
+            result.push(MorePost::from(post_detail))
+        }
+        result
+    };
+
+    Ok(PostDetailPage{
+        more_post,
+        user_info: post_user,
+        post_detail
+    })
 }
 
 pub async fn toggle_save_post(user_id: i32, slug: String) -> Result<PostDetail, ErrorMessage> {
@@ -709,7 +749,7 @@ pub async fn toggle_follow_tag(user_id: i32, tag_val: String) -> Result<bool, Er
                 Err(_) => { Err(ErrorMessage::ServerError) }
             }
         }
-    }
+    };
 }
 
 pub async fn posts() -> Vec<ShortPostAdmin> {
