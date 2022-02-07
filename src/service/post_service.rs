@@ -179,13 +179,17 @@ pub async fn interact_comment(identity: HttpRequest, web::Path((slug, id)): web:
 
 
 pub async fn index(req: HttpRequest, page: web::Path<i32>) -> impl Responder {
-    let val = match check_login(req).await {
-        Ok(user_id) => { post::index(Some(user_id), page.0).await }
-        Err(_) => { post::index(None, page.0).await }
+    let mut data = doc! {};
+    let (index_posts, index_tag) = match check_login(req).await {
+        Ok(user_id) => { (post::index(Some(user_id), page.0).await, tag::index_tag(Some(&user_id)).await) }
+        Err(_) => { (post::index(None, page.0).await, tag::index_tag(None).await) }
     };
+    data.insert("post", bson::to_bson(&index_posts).unwrap());
+    data.insert("tag", bson::to_bson(&index_tag).unwrap());
+    data.insert("isFull", ((*&index_posts.len() as i32) < 15) as bool);
+
     HttpResponse::Ok().json(doc! {
-                "data":bson::to_bson(&val).unwrap(),
-                "isFull":((*&val.len() as i32)<15 ) as bool
+                "data":data
     })
 }
 

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::dto::user_dto::SmallAccount;
-use crate::model::tag::Tag;
+use crate::model::tag::{Tag, Type};
 
 #[derive(Deserialize, Serialize)]
 pub struct TagPage {
@@ -54,6 +54,8 @@ pub struct TagAdmin {
     pub desc: String,
     pub color: String,
     pub image: String,
+    #[serde(rename = "type")]
+    pub types: Type,
     #[serde(rename = "postCount")]
     pub post_count: i32,
     // pub moderator: Vec<String>,
@@ -67,6 +69,7 @@ impl From<Tag> for TagAdmin {
             desc: tag.desc,
             color: tag.color,
             image: tag.image,
+            types: tag.types,
             post_count: tag.post,
         }
     }
@@ -76,6 +79,8 @@ impl From<Tag> for TagAdmin {
 pub struct CreateTag {
     pub value: String,
     pub desc: String,
+    #[serde(rename = "type")]
+    pub types: Type,
     pub color: String,
     pub image: String,
 }
@@ -85,6 +90,29 @@ pub struct UpdateTag {
     pub id: i32,
     pub value: Option<String>,
     pub desc: Option<String>,
+    #[serde(rename = "type")]
+    pub types: Type,
     pub color: Option<String>,
     pub image: Option<String>,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct ShortTag {
+    pub value: String,
+    pub image: String,
+}
+
+impl From<Tag> for ShortTag {
+    fn from(tag: Tag) -> Self {
+        ShortTag {
+            value: tag.value,
+            image: tag.image,
+        }
+    }
+}
+
+#[derive(Default,Deserialize, Serialize)]
+pub struct IndexTag {
+    pub tag: Vec<ShortTag>,
+    pub category: Vec<ShortTag>,
 }

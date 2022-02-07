@@ -133,3 +133,25 @@ impl From<Account> for SmallAccount {
         }
     }
 }
+
+
+#[derive(Serialize, Deserialize)]
+pub struct PostDetailUser {
+    pub username: String,
+    pub name: String,
+    pub avatar: String,
+    pub followed: bool,
+    pub bio: String,
+}
+
+impl From<Account> for PostDetailUser {
+    fn from(acc: Account) -> Self {
+        PostDetailUser {
+            username: acc.username,
+            name: acc.name,
+            avatar: acc.avatar,
+            followed: false,
+            bio: acc.bio,
+        }
+    }
+}

@@ -2,13 +2,14 @@ use std::option::Option::Some;
 
 use futures::TryStreamExt;
 use mongodb::{bson::doc, Client, options::ClientOptions};
-use mongodb::options::FindOneOptions;
+use mongodb::options::{FindOneOptions, FindOptions};
 
 use crate::database::user::get_user_by_id;
-use crate::dto::tag_dto::{CreateTag, TagAdmin, TagList, TagPage, UpdateTag};
+use crate::dto::tag_dto::{CreateTag, IndexTag, ShortTag, TagAdmin, TagList, TagPage, UpdateTag};
 use crate::dto::user_dto::SmallAccount;
 use crate::error::ErrorMessage;
 use crate::model::tag::Tag;
+use crate::database::user::{connect as connect_user};
 
 async fn connect() -> mongodb::Collection<Tag> {
     let mut conn = ClientOptions::parse("mongodb://admin:Lj6kuxGJh&k8CaN6UgsQF+aDVkQF3Wn7hdSeXke@localhost:27017/").await.unwrap();
@@ -65,7 +66,7 @@ pub async fn get_tags(user_id: Option<i32>) -> Vec<TagList> {
         None => {
             let mut rs: Vec<TagList> = vec![];
             let col = connect().await;
-            let mut cursor = col.find(None, None).await.unwrap();
+            let mut cursor = col.find(doc! {"type":"Tag"}, None).await.unwrap();
             while let Some(tag) = cursor.try_next().await.unwrap() {
                 rs.push(TagList::from(tag));
             }
@@ -127,6 +128,7 @@ pub async fn create_tag(tag_create: CreateTag) -> Result<Vec<TagAdmin>, ErrorMes
                 color: tag_create.color,
                 image: tag_create.image,
                 post: 0,
+                types: tag_create.types,
                 moderator: vec![],
             };
             match col.insert_one(tag, None).await {
@@ -158,4 +160,48 @@ pub async fn update(tag_update: UpdateTag) -> Result<Vec<TagAdmin>, ErrorMessage
             Ok(tags().await)
         }
     };
+}
+
+pub async fn index_tag(user_id: Option<&i32>) -> IndexTag {
+    let mut category: Vec<ShortTag> = Vec::new();
+    let col = connect().await;
+    let sort_builder = FindOptions::builder().sort(doc! {
+            "createdAt":-1,
+            "reactionCount":-1,
+            "commentCount":-1
+    }).limit(10).build();
+
+    // Category list
+    let mut cate_cursor = col.find(doc! {"type":"Category"}, None).await.unwrap();
+    while let Some(tag) = cate_cursor.try_next().await.unwrap() {
+        category.push(ShortTag::from(tag))
+    }
+
+
+    let tag = match user_id {
+        None => {
+            let mut result: Vec<ShortTag> = Vec::new();
+            let mut tag_cursor = col.find(doc! {"type":"Tag"}, sort_builder).await.unwrap();
+            while let Some(tag) = tag_cursor.try_next().await.unwrap() {
+                result.push(ShortTag::from(tag));
+            }
+            result
+        }
+        Some(id) => {
+            let mut result: Vec<ShortTag> = Vec::new();
+            let user_col = connect_user().await;
+            let user = user_col.find_one(doc! {"_id":id}, None).await.unwrap().unwrap();
+            let mut tag_cursor = col.find(doc! {"$and":[
+                {"type":"Tag"},{
+                "_id":{
+                    "$in":user.followed_tag
+                }}
+            ]}, None).await.unwrap();
+            while let Some(tag) = tag_cursor.try_next().await.unwrap() {
+                result.push(ShortTag::from(tag));
+            }
+            result
+        }
+    };
+    IndexTag { tag, category }
 }
