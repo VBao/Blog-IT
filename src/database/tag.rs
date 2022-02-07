@@ -1,4 +1,5 @@
 use std::option::Option::Some;
+use chrono::{DateTime, Utc};
 
 use futures::TryStreamExt;
 use mongodb::{bson::doc, Client, options::ClientOptions};
@@ -116,6 +117,7 @@ pub async fn tags() -> Vec<TagAdmin> {
 
 pub async fn create_tag(tag_create: CreateTag) -> Result<Vec<TagAdmin>, ErrorMessage> {
     let col = connect().await;
+    let now: DateTime<Utc> = Utc::now();
     let sort = FindOneOptions::builder().sort(doc! {"_id":-1}).build();
     let last_tag = col.find_one(None, sort).await.unwrap();
     let duplicate = col.find_one(doc! {"value":&tag_create.value}, None).await.unwrap();
@@ -128,6 +130,8 @@ pub async fn create_tag(tag_create: CreateTag) -> Result<Vec<TagAdmin>, ErrorMes
                 color: tag_create.color,
                 image: tag_create.image,
                 post: 0,
+                created_at: now,
+                updated_at: now,
                 types: tag_create.types,
                 moderator: vec![],
             };
@@ -143,6 +147,7 @@ pub async fn create_tag(tag_create: CreateTag) -> Result<Vec<TagAdmin>, ErrorMes
 
 pub async fn update(tag_update: UpdateTag) -> Result<Vec<TagAdmin>, ErrorMessage> {
     let col = connect().await;
+    let now: DateTime<Utc> = Utc::now();
     let tag_opt = col.find_one(doc! {"_id":&tag_update.id}, None).await.unwrap();
     return match tag_opt {
         None => { Err(ErrorMessage::NotFound) }
@@ -153,6 +158,7 @@ pub async fn update(tag_update: UpdateTag) -> Result<Vec<TagAdmin>, ErrorMessage
             if tag_update.desc.is_some() { tag.desc = tag_update.desc.unwrap() }
             if tag_update.color.is_some() { tag.color = tag_update.color.unwrap() }
             if tag_update.image.is_some() { tag.image = tag_update.image.unwrap() }
+            tag.updated_at = now;
             match col.replace_one(doc! {"_id":&tag.id}, tag, None).await {
                 Ok(_) => {}
                 Err(_) => { return Err(ErrorMessage::ServerError); }

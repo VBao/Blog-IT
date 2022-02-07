@@ -56,6 +56,10 @@ pub struct TagAdmin {
     pub image: String,
     #[serde(rename = "type")]
     pub types: Type,
+    #[serde(rename = "createdAt")]
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    #[serde(rename = "updatedAt")]
+    pub updated_at: chrono::DateTime<chrono::Utc>,
     #[serde(rename = "postCount")]
     pub post_count: i32,
     // pub moderator: Vec<String>,
@@ -70,6 +74,8 @@ impl From<Tag> for TagAdmin {
             color: tag.color,
             image: tag.image,
             types: tag.types,
+            created_at: tag.created_at,
+            updated_at: tag.updated_at,
             post_count: tag.post,
         }
     }
@@ -111,7 +117,7 @@ impl From<Tag> for ShortTag {
     }
 }
 
-#[derive(Default,Deserialize, Serialize)]
+#[derive(Default, Deserialize, Serialize)]
 pub struct IndexTag {
     pub tag: Vec<ShortTag>,
     pub category: Vec<ShortTag>,

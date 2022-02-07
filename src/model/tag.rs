@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize,Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum Type {
     Category,
     Tag,
@@ -15,6 +15,12 @@ pub struct Tag {
     pub color: String,
     pub image: String,
     pub post: i32,
+    #[serde(rename = "createdAt")]
+    #[serde(with = "bson::serde_helpers::chrono_datetime_as_bson_datetime")]
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    #[serde(with = "bson::serde_helpers::chrono_datetime_as_bson_datetime")]
+    #[serde(rename = "updatedAt")]
+    pub updated_at: chrono::DateTime<chrono::Utc>,
     #[serde(rename = "type")]
     pub types: Type,
     pub moderator: Vec<i32>,
