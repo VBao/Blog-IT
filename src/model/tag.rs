@@ -1,5 +1,11 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(Serialize, Deserialize,Clone)]
+pub enum Type {
+    Category,
+    Tag,
+}
+
 #[derive(Deserialize, Serialize, Clone)]
 pub struct Tag {
     #[serde(rename = "_id")]
@@ -9,5 +15,7 @@ pub struct Tag {
     pub color: String,
     pub image: String,
     pub post: i32,
+    #[serde(rename = "type")]
+    pub types: Type,
     pub moderator: Vec<i32>,
 }

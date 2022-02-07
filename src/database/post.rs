@@ -683,10 +683,10 @@ pub async fn get_post(user_id: Option<&i32>, slug: String) -> Result<PostDetailP
         result
     };
 
-    Ok(PostDetailPage{
+    Ok(PostDetailPage {
         more_post,
         user_info: post_user,
-        post_detail
+        post_detail,
     })
 }
 
