@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::model::user::Account;
+use crate::model::user::{Account, Status};
 
 #[derive(Deserialize, Serialize)]
 pub struct AccountStore {
@@ -43,6 +43,9 @@ pub struct ShowAccountAdmin {
     school_email: String,
     email: String,
     avatar: String,
+    status: Status,
+    #[serde(rename = "lastAccess")]
+    last_access: chrono::DateTime<chrono::Utc>,
     admin: bool,
 }
 
@@ -54,6 +57,8 @@ impl From<Account> for ShowAccountAdmin {
             school_email: acc.school_email,
             email: acc.private_email,
             avatar: acc.avatar,
+            status: acc.status,
+            last_access: acc.last_access,
             admin: acc.admin,
         }
     }
