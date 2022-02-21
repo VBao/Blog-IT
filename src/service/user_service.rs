@@ -211,15 +211,22 @@ pub async fn create_admin(req: HttpRequest, acc: Json<CreateAccount>) -> impl Re
 pub async fn edit_info(req: HttpRequest, account: Json<UpdateAccount>) -> impl Responder {
     return match check_login(req).await {
         Ok(id) => {
-            match user::update_info(&id, account.0).await {
-                Ok(_) => {}
+            let mut response = doc! {};
+            let acc = match user::update_info(&id, account.0).await {
+                Ok(account) => { account }
                 Err(err) => {
                     return match err {
                         _ => { HttpResponse::InternalServerError().json(doc! {"msg":"uncheck exception"}) }
                     };
                 }
-            }
-            let mut response = doc! {};
+            };
+
+            // Remove unused field from AccountStore struct
+            let mut acc_bson = bson::to_bson(&acc).unwrap().as_document().unwrap().to_owned();
+            acc_bson.remove("token");
+            acc_bson.remove("id");
+
+            response.insert("user", acc_bson);
             let user = get_user_by_id(id).await.unwrap();
             let post_list = post::get_post_dashboard(&user).await;
             response.insert("post", bson::to_bson(&post_list).unwrap());

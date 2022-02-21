@@ -271,7 +271,7 @@ pub async fn follow_user_toggle(user_id: i32, username_follow: String) -> Result
 }
 
 
-pub async fn update_info(user_id: &i32, acc_update: UpdateAccount) -> Result<(), ErrorMessage> {
+pub async fn update_info(user_id: &i32, acc_update: UpdateAccount) -> Result<AccountStore, ErrorMessage> {
     let col = connect().await;
     let user_opt = col.find_one(doc! {"_id":user_id}, None).await.unwrap();
     return match user_opt {
@@ -302,8 +302,11 @@ pub async fn update_info(user_id: &i32, acc_update: UpdateAccount) -> Result<(),
             }
             if acc_update.bio.is_some() { acc.bio = acc_update.bio.unwrap() }
             if acc_update.website.is_some() { acc.website = acc_update.website.unwrap() }
-            match col.replace_one(doc! {"_id":user_id}, &acc, None).await {
-                Ok(_) => { Ok(()) }
+            match col.replace_one(doc! {"_id":&user_id}, &acc, None).await {
+                Ok(_) => {
+                    let usr = col.find_one(doc! {"_id":&user_id}, None).await.unwrap().unwrap();
+                    return Ok(AccountStore::from(usr));
+                }
                 Err(_) => { Err(ErrorMessage::ServerError) }
             }
         }
