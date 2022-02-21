@@ -1,16 +1,16 @@
 use std::option::Option::Some;
-use chrono::{DateTime, Utc};
 
+use chrono::{DateTime, Utc};
 use futures::TryStreamExt;
 use mongodb::{bson::doc, Client, options::ClientOptions};
 use mongodb::options::{FindOneOptions, FindOptions};
 
+use crate::database::user::connect as connect_user;
 use crate::database::user::get_user_by_id;
 use crate::dto::tag_dto::{CreateTag, IndexTag, ShortTag, TagAdmin, TagList, TagPage, UpdateTag};
 use crate::dto::user_dto::SmallAccount;
 use crate::error::ErrorMessage;
 use crate::model::tag::Tag;
-use crate::database::user::{connect as connect_user};
 
 async fn connect() -> mongodb::Collection<Tag> {
     let mut conn = ClientOptions::parse("mongodb://admin:Lj6kuxGJh&k8CaN6UgsQF+aDVkQF3Wn7hdSeXke@localhost:27017/").await.unwrap();
@@ -171,11 +171,6 @@ pub async fn update(tag_update: UpdateTag) -> Result<Vec<TagAdmin>, ErrorMessage
 pub async fn index_tag(user_id: Option<&i32>) -> IndexTag {
     let mut category: Vec<ShortTag> = Vec::new();
     let col = connect().await;
-    let sort_builder = FindOptions::builder().sort(doc! {
-            "createdAt":-1,
-            "reactionCount":-1,
-            "commentCount":-1
-    }).limit(10).build();
 
     // Category list
     let mut cate_cursor = col.find(doc! {"type":"Category"}, None).await.unwrap();
@@ -187,6 +182,11 @@ pub async fn index_tag(user_id: Option<&i32>) -> IndexTag {
     let tag = match user_id {
         None => {
             let mut result: Vec<ShortTag> = Vec::new();
+            let sort_builder = FindOptions::builder().sort(doc! {
+                "createdAt":-1,
+                "reactionCount":-1,
+                "commentCount":-1
+            }).limit(10).build();
             let mut tag_cursor = col.find(doc! {"type":"Tag"}, sort_builder).await.unwrap();
             while let Some(tag) = tag_cursor.try_next().await.unwrap() {
                 result.push(ShortTag::from(tag));
@@ -199,10 +199,26 @@ pub async fn index_tag(user_id: Option<&i32>) -> IndexTag {
             let user = user_col.find_one(doc! {"_id":id}, None).await.unwrap().unwrap();
             let mut tag_cursor = col.find(doc! {"$and":[
                 {"type":"Tag"},{
-                "_id":{
-                    "$in":user.followed_tag
-                }}
+                    "_id":{
+                        "$in":&user.followed_tag
+                    }
+                }
             ]}, None).await.unwrap();
+            while let Some(tag) = tag_cursor.try_next().await.unwrap() {
+                result.push(ShortTag::from(tag));
+            }
+            let sort_builder = FindOptions::builder().sort(doc! {
+                "createdAt":-1,
+                "reactionCount":-1,
+                "commentCount":-1
+             }).limit(10 - (result.len() as i64)).build();
+            let mut tag_cursor = col.find(doc! {"$and":[
+                {"type":"Tag"},{
+                    "_id":{
+                        "$nin":&user.followed_tag
+                    }
+                }
+            ]}, sort_builder).await.unwrap();
             while let Some(tag) = tag_cursor.try_next().await.unwrap() {
                 result.push(ShortTag::from(tag));
             }
