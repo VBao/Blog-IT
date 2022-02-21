@@ -134,7 +134,7 @@ pub async fn sign_up(account: CreateAccount) -> Result<AccountStore, &'static st
     log_in(account.username, account.password).await
 }
 
-pub async fn create_admin(account: CreateAccount) -> Result<AccountStore, ErrorMessage> {
+pub async fn create_admin(account: CreateAccount) -> Result<Vec<ShowAccountAdmin>, ErrorMessage> {
     let col = connect().await;
     if check_username_duplicate(&account.username).await {
         return Err(ErrorMessage::Duplicate);
@@ -168,7 +168,7 @@ pub async fn create_admin(account: CreateAccount) -> Result<AccountStore, ErrorM
         followed_user: vec![],
     };
     return match col.insert_one(create_acc, None).await {
-        Ok(_) => { Ok(log_in(account.username, account.password).await.unwrap()) }
+        Ok(_) => { Ok(get_users().await) }
         Err(_) => { Err(ErrorMessage::ServerError) }
     };
 }

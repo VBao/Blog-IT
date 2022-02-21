@@ -57,11 +57,11 @@ async fn main() -> std::io::Result<()> {
                     .route("/follow-tag/{tag}", web::get().to(post_service::follow_tag))
                     .route("/delete/{slug}", web::delete().to(post_service::delete_post))
             ).service(
-            web::scope("/user")
-                .route("/follow/{username_following}", web::get().to(user_service::follow_user_toggle))
-                .route("/info/{username}", web::get().to(user_service::get_user))
-                .route("/dashboard", web::get().to(user_service::get_dashboard))
-                .route("/edit-info", web::post().to(user_service::edit_info)))
+                web::scope("/user")
+                    .route("/follow/{username_following}", web::get().to(user_service::follow_user_toggle))
+                    .route("/info/{username}", web::get().to(user_service::get_user))
+                    .route("/dashboard", web::get().to(user_service::get_dashboard))
+                    .route("/edit-info", web::post().to(user_service::edit_info)))
             .service(
                 web::scope("admin")
                     .route("/create-admin", web::post().to(user_service::create_admin))
@@ -71,10 +71,10 @@ async fn main() -> std::io::Result<()> {
                     .route("/update-tag", web::post().to(tag_service::update_tag))
                     .route("/create-tag", web::post().to(tag_service::create_tag))
             ).service(
-            web::scope("run-one")
-                .route("/tag", web::post().to(tag_service::create_list))
-                .route("/post", web::post().to(post_service::create_list))
-                .route("/user", web::post().to(user_service::create_list))
+                web::scope("run-one")
+                    .route("/tag", web::post().to(tag_service::create_list))
+                    .route("/post", web::post().to(post_service::create_list))
+                    .route("/user", web::post().to(user_service::create_list))
         )
     })
         .bind("0.0.0.0:8040")?
