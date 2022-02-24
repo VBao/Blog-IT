@@ -14,7 +14,7 @@ use crate::constant::MONGODB_URL;
 use crate::database::tag;
 use crate::database::user::{connect as connect_user, get_user_by_id};
 use crate::dto::post_dto::{CommentDetail, CommentInfoPage, CreateComment, CreatePost, Index, MorePost, PostDetail, PostDetailComment, PostDetailPage, ShortPost, ShortPostAdmin, UpdateComment, UpdatePost};
-use crate::dto::tag_dto::TagList;
+use crate::dto::tag_dto::{ShortTag, TagList};
 use crate::dto::user_dto::PostDetailUser;
 use crate::error::ErrorMessage;
 use crate::model::post::*;
@@ -753,6 +753,7 @@ pub async fn toggle_follow_tag(user_id: i32, tag_val: String) -> Result<bool, Er
 }
 
 pub async fn posts() -> Vec<ShortPostAdmin> {
+    let tag_con = connection_tag().await;
     let find_option = FindOptions::builder().sort(doc! {
             "createdAt":-1,
             "reactionCount":-1,
@@ -762,7 +763,12 @@ pub async fn posts() -> Vec<ShortPostAdmin> {
     let mut cursor = post_col.find(doc! {"status":"Published"}, find_option).await.unwrap();
     let mut res: Vec<ShortPostAdmin> = Vec::new();
     while let Some(post) = cursor.try_next().await.unwrap() {
-        res.push(ShortPostAdmin::from(post));
+        let mut post_dto = ShortPostAdmin::from(post.to_owned());
+        for tag in post.tag {
+            let test = tag_con.find_one(doc! {"value":tag}, None).await.unwrap().unwrap();
+            post_dto.tag.push(ShortTag::from(test));
+        }
+        res.push(post_dto);
     }
     return res;
 }

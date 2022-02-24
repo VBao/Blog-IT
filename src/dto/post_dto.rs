@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
-use crate::dto::user_dto::PostDetailUser;
 
+use crate::dto::tag_dto::ShortTag;
+use crate::dto::user_dto::PostDetailUser;
 use crate::model::post::{Comment, Post, Status};
 
 #[derive(Serialize, Deserialize)]
@@ -239,12 +240,13 @@ pub struct ShortPostAdmin {
     pub title: String,
     pub username: String,
     pub interact: i32,
+    pub banner: Option<String>,
     pub comment: i32,
     #[serde(rename = "createdAt")]
     pub created_at: chrono::DateTime<chrono::Utc>,
     #[serde(rename = "updatedAt")]
     pub updated_at: chrono::DateTime<chrono::Utc>,
-    pub tags: Vec<String>,
+    pub tag: Vec<ShortTag>,
 }
 
 impl From<Post> for ShortPostAdmin {
@@ -254,10 +256,11 @@ impl From<Post> for ShortPostAdmin {
             title: post.title,
             username: post.user_username,
             interact: post.reaction_count,
+            banner: post.banner,
             comment: post.comment_count,
             created_at: post.created_at,
             updated_at: post.updated_at,
-            tags: post.tag,
+            tag: Vec::new(),
         }
     }
 }
@@ -265,7 +268,7 @@ impl From<Post> for ShortPostAdmin {
 #[derive(Serialize, Deserialize)]
 pub struct MorePost {
     pub slug: String,
-    pub title:String,
+    pub title: String,
     pub tag: Vec<String>,
 }
 

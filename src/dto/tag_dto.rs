@@ -102,10 +102,11 @@ pub struct UpdateTag {
     pub image: Option<String>,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct ShortTag {
     pub value: String,
     pub image: String,
+    pub color: String,
 }
 
 impl From<Tag> for ShortTag {
@@ -113,6 +114,7 @@ impl From<Tag> for ShortTag {
         ShortTag {
             value: tag.value,
             image: tag.image,
+            color: tag.color
         }
     }
 }
