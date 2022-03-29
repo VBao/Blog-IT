@@ -106,13 +106,17 @@ pub async fn sign_up(account: CreateAccount) -> Result<AccountStore, &'static st
     let now = Utc::now();
     let create_acc = Account {
         id,
-        name: account.name,
+        name: account.name.to_owned(),
         username: account.username.to_owned(),
         school_email: account.school_email,
         private_email: account.private_email,
         bio: if account.bio.is_some() { account.bio.unwrap() } else { "".to_string() },
         password,
-        avatar: if account.avatar.is_some() { account.avatar.unwrap() } else { "".to_string() },
+        avatar: if account.avatar.is_some() { account.avatar.unwrap() } else {
+            let url = "https://ui-avatars.com/api/?background=d90429&color=fff&name=";
+            let name = account.name.replace(' ', "+");
+            url.to_string() + &name
+        },
         admin: false,
         website: if account.website.is_some() { account.website.unwrap() } else { "".to_string() },
         last_access: now,
@@ -245,7 +249,7 @@ pub async fn get_user_full(id: i32) -> Account {
     return col.find_one(doc! {"_id":id}, None).await.unwrap().unwrap();
 }
 
-pub async fn follow_user_toggle(user_id: i32, username_follow: String) -> Result<(), ErrorMessage> {
+pub async fn follow_user_toggle(user_id: i32, username_follow: String) -> Result<bool, ErrorMessage> {
     let col = connect().await;
     let user_follow = col.find_one(doc! {"username":username_follow}, None).await.unwrap();
     return match user_follow {
@@ -254,18 +258,17 @@ pub async fn follow_user_toggle(user_id: i32, username_follow: String) -> Result
         }
         Some(user_follower) => {
             let follower = col.find_one(doc! {"_id":&user_id}, None).await.unwrap().unwrap();
-            if follower.followed_user.contains(&user_follower.id) {
+            return if follower.followed_user.contains(&user_follower.id) {
                 match col.update_one(doc! {"_id":user_id}, doc! {"$pull":{"followedUser":user_follower.id}}, None).await {
-                    Ok(_) => {}
-                    Err(_) => { return Err(ErrorMessage::ServerError); }
+                    Ok(_) => { Ok(false) }
+                    Err(_) => { Err(ErrorMessage::ServerError) }
                 }
             } else {
                 match col.update_one(doc! {"_id":user_id}, doc! {"$push":{"followedUser":user_follower.id}}, None).await {
-                    Ok(_) => {}
-                    Err(_) => { return Err(ErrorMessage::ServerError); }
+                    Ok(_) => { Ok(true) }
+                    Err(_) => { Err(ErrorMessage::ServerError) }
                 }
-            }
-            Ok(())
+            };
         }
     };
 }

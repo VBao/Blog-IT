@@ -50,10 +50,10 @@ pub async fn update_post(id: HttpRequest, post: Json<UpdatePost>) -> impl Respon
 }
 
 
-pub async fn change_status(id: HttpRequest, slug: Path<String>) -> impl Responder {
+pub async fn change_status(id: HttpRequest, slug: Path<(String, )>) -> impl Responder {
     return match check_login(id).await {
         Ok(user_id) => {
-            match post::change_status(user::get_user_by_id(user_id).await.unwrap(), slug.0).await {
+            match post::change_status(user::get_user_by_id(user_id).await.unwrap(), slug.into_inner().0).await {
                 Ok(_) => { HttpResponse::Ok().finish() }
                 Err(_err) => { HttpResponse::InternalServerError().finish() }
             }
@@ -97,11 +97,11 @@ pub async fn update_comment(id: HttpRequest, comment: Json<UpdateComment>) -> im
     };
 }
 
-pub async fn interact(id: HttpRequest, slug_id: Path<String>) -> impl Responder {
+pub async fn interact(id: HttpRequest, slug_id: Path<(String, )>) -> impl Responder {
     match check_login(id).await {
         Err(err) => { err }
         Ok(user_id) => {
-            match post::add_interact(slug_id.0, user_id).await {
+            match post::add_interact(slug_id.into_inner().0, user_id).await {
                 Err(err) => {
                     match err {
                         ErrorMessage::NotFound => { HttpResponse::Ok().json(doc! {"msg":"Not found post with provided slug"}) }
@@ -128,24 +128,25 @@ fn match_error(error: ErrorMessage) -> HttpResponse {
     };
 }
 
-pub async fn search(id: HttpRequest, keyword: Path<String>) -> impl Responder {
+pub async fn search(id: HttpRequest, keyword: Path<(String, )>) -> impl Responder {
     let user: Option<Account> = match check_login(id).await {
         Ok(id) => { get_user_by_id(id).await }
         Err(_) => { None }
     };
     let mut result = doc! {};
-    let post_rs = post::search_post(user.borrow(), keyword.0.to_owned()).await;
+    let keyword = keyword.into_inner().0;
+    let post_rs = post::search_post(user.borrow(), &keyword).await;
     result.insert("post", bson::to_bson(&post_rs).unwrap());
     result.insert("isFull", ((*&post_rs.len() as i32) < 15) as bool);
-    let comment_rs = post::search_comment_post(user.borrow(), keyword.0.to_owned()).await;
+    let comment_rs = post::search_comment_post(user.borrow(), &keyword).await;
     result.insert("comment", bson::to_bson(&comment_rs).unwrap());
     let user_rs = match user
     {
         None => {
-            user::search_by_username(keyword.0).await.into_iter().map(|p| { SmallAccount::from(p) }).collect()
+            user::search_by_username(keyword).await.into_iter().map(|p| { SmallAccount::from(p) }).collect()
         }
         Some(usr) => {
-            let rs: Vec<SmallAccount> = user::search_by_username(keyword.0).await.into_iter().map(|p| {
+            let rs: Vec<SmallAccount> = user::search_by_username(keyword).await.into_iter().map(|p| {
                 let mut rs = SmallAccount::from(p.to_owned());
                 if usr.followed_user.contains(&p.id) {
                     rs.followed = true;
@@ -159,10 +160,10 @@ pub async fn search(id: HttpRequest, keyword: Path<String>) -> impl Responder {
     return HttpResponse::Ok().json(doc! {"data":result});
 }
 
-pub async fn interact_comment(identity: HttpRequest, web::Path((slug, id)): web::Path<(String, i32)>) -> impl Responder {
-    return match check_login(identity).await {
+pub async fn interact_comment(req: HttpRequest) -> impl Responder {
+    return match check_login(req.to_owned()).await {
         Ok(user_id) => {
-            return match post::interact_comment(slug, id, user_id).await {
+            return match post::interact_comment(req.to_owned().match_info().get("slug").unwrap().parse().unwrap(), req.to_owned().match_info().get("id").unwrap().parse().unwrap(), user_id).await {
                 Ok(data) => { HttpResponse::Ok().json(doc! {"data":bson::to_bson(&data).unwrap()}) }
                 Err(err) => {
                     match err {
@@ -178,25 +179,26 @@ pub async fn interact_comment(identity: HttpRequest, web::Path((slug, id)): web:
 }
 
 
-pub async fn index(req: HttpRequest, page: web::Path<i32>) -> impl Responder {
+pub async fn index(req: HttpRequest, page: web::Path<(i32, )>) -> impl Responder {
     let mut data = doc! {};
     let (index_posts, index_tag) = match check_login(req).await {
-        Ok(user_id) => { (post::index(Some(user_id), page.0).await, tag::index_tag(Some(&user_id)).await) }
-        Err(_) => { (post::index(None, page.0).await, tag::index_tag(None).await) }
+        Ok(user_id) => { (post::index(Some(user_id), page.into_inner().0).await, tag::index_tag(Some(&user_id)).await) }
+        Err(_) => { (post::index(None, page.into_inner().0).await, tag::index_tag(None).await) }
     };
     data.insert("post", bson::to_bson(&index_posts).unwrap());
     data.insert("tag", bson::to_bson(&index_tag).unwrap());
     data.insert("isFull", ((*&index_posts.len() as i32) < 15) as bool);
 
     HttpResponse::Ok().json(doc! {
-                "data":data
+                "data":data,
+                "message":"success"
     })
 }
 
-pub async fn reading(id: HttpRequest, slug: web::Path<String>) -> impl Responder {
+pub async fn reading(id: HttpRequest, slug: web::Path<(String, )>) -> impl Responder {
     match check_login(id).await {
         Ok(user_id) => {
-            match post::reading_process(get_user_by_id(user_id).await.unwrap(), slug.0).await {
+            match post::reading_process(get_user_by_id(user_id).await.unwrap(), slug.into_inner().0).await {
                 Ok(data) => { HttpResponse::Ok().json(doc! {"data":bson::to_bson(&data).unwrap()}) }
                 Err(err) => { HttpResponse::InternalServerError().json(doc! {"error":err}) }
             }
@@ -219,15 +221,16 @@ pub async fn get_tags(id: HttpRequest) -> impl Responder {
     };
 }
 
-pub async fn get_tag(id: HttpRequest, value: Path<String>) -> impl Responder {
+pub async fn get_tag(id: HttpRequest, value: Path<(String, )>) -> impl Responder {
     let user_id: Option<i32> = match check_login(id).await {
         Ok(id) => { Some(id) }
         Err(_) => { None }
     };
-    return match tag::get_tag(user_id.to_owned(), value.0.to_owned()).await {
+    let value = value.into_inner().0;
+    return match tag::get_tag(user_id.to_owned(), value.to_owned()).await {
         Ok(result) => {
             let mut resp = doc! {};
-            let post = find_by_tag(user_id, value.0).await;
+            let post = find_by_tag(user_id, value).await;
             resp.insert("tag", bson::to_bson(&result).unwrap());
             resp.insert("post", bson::to_bson(&post).unwrap());
             HttpResponse::Ok().json(doc! {"data": resp })
@@ -250,7 +253,7 @@ pub async fn get_post(id: HttpRequest, slug: Path<String>) -> impl Responder {
         Ok(x) => { Some(x) }
         Err(_) => { None }
     };
-    return match post::get_post(user_id.as_ref(), slug.0).await {
+    return match post::get_post(user_id.as_ref(), slug.into_inner()).await {
         Ok(result) => {
             let resp = bson::to_bson(&result).unwrap();
             HttpResponse::Ok().json(doc! {"data":resp})
@@ -267,7 +270,7 @@ pub async fn get_post(id: HttpRequest, slug: Path<String>) -> impl Responder {
 pub async fn save_post(req: HttpRequest, slug: Path<String>) -> impl Responder {
     return match check_login(req).await {
         Ok(user_id) => {
-            match post::toggle_save_post(user_id, slug.0).await {
+            match post::toggle_save_post(user_id, slug.into_inner()).await {
                 Ok(data) => {
                     HttpResponse::Ok().json(doc! {"data":bson::to_bson(&data).unwrap()})
                 }
@@ -286,7 +289,7 @@ pub async fn save_post(req: HttpRequest, slug: Path<String>) -> impl Responder {
 pub async fn follow_tag(req: HttpRequest, tag: Path<String>) -> impl Responder {
     return match check_login(req).await {
         Ok(id) => {
-            return match post::toggle_follow_tag(id.to_owned(), tag.0).await {
+            return match post::toggle_follow_tag(id.to_owned(), tag.into_inner()).await {
                 Ok(follow) => {
                     let mut res = doc! {};
                     res.insert("msg", "follow/unfollow tag success");
@@ -343,7 +346,7 @@ pub async fn create_list(req: HttpRequest, list: Json<Vec<CreatePost>>) -> impl 
 pub async fn delete_post(req: HttpRequest, slug: Path<String>) -> impl Responder {
     return match check_login(req).await {
         Ok(user_id) => {
-            match post::delete_post(&user_id, slug.0).await {
+            match post::delete_post(&user_id, slug.into_inner()).await {
                 Ok(_) => {
                     let mut response = doc! {};
                     let user = get_user_by_id(user_id).await.unwrap();

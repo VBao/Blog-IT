@@ -345,7 +345,7 @@ pub async fn remove_interact(slug: String, user_id: i32) -> Result<(), ErrorMess
     };
 }
 
-pub async fn search_post(account: &Option<Account>, keyword: String) -> Vec<Index> {
+pub async fn search_post(account: &Option<Account>, keyword: &String) -> Vec<Index> {
     let col = connection_post().await;
     let search_string = keyword;
     let query_find = doc! {
@@ -377,7 +377,7 @@ pub async fn search_post_by_username(account: &Option<Account>, username: &Strin
     return map_index(cursor, account).await;
 }
 
-pub async fn search_comment_post(account: &Option<Account>, keyword: String) -> Vec<Index> {
+pub async fn search_comment_post(account: &Option<Account>, keyword: &String) -> Vec<Index> {
     let col = connection_post().await;
     let cursor = col.find(doc! {"comment.content":{"$regex":keyword}}, None).await.unwrap();
     return map_index(cursor, account).await;

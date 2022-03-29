@@ -180,6 +180,7 @@ pub async fn index_tag(user_id: Option<&i32>) -> IndexTag {
 
 
     let tag = match user_id {
+
         None => {
             let mut result: Vec<ShortTag> = Vec::new();
             let sort_builder = FindOptions::builder().sort(doc! {
@@ -193,6 +194,7 @@ pub async fn index_tag(user_id: Option<&i32>) -> IndexTag {
             }
             result
         }
+
         Some(id) => {
             let mut result: Vec<ShortTag> = Vec::new();
             let user_col = connect_user().await;
@@ -204,16 +206,20 @@ pub async fn index_tag(user_id: Option<&i32>) -> IndexTag {
                     }
                 }
             ]}, None).await.unwrap();
+
             while let Some(tag) = tag_cursor.try_next().await.unwrap() {
                 result.push(ShortTag::from(tag));
             }
+
             let sort_builder = FindOptions::builder().sort(doc! {
                 "createdAt":-1,
                 "reactionCount":-1,
                 "commentCount":-1
              }).limit(10 - (result.len() as i64)).build();
             let mut tag_cursor = col.find(doc! {"$and":[
-                {"type":"Tag"},{
+                {
+                    "type":"Tag"
+                },{
                     "_id":{
                         "$nin":&user.followed_tag
                     }
