@@ -6,7 +6,7 @@ use serde::Deserialize;
 
 use crate::database::post;
 use crate::database::user;
-use crate::database::user::{get_user_by_id, get_user_full, get_user_list_dashboard};
+use crate::database::user::{dashboard_summary, get_user_by_id, get_user_full, get_user_list_dashboard};
 use crate::dto::user_dto::{CreateAccount, UpdateAccount, UserPage};
 use crate::error::ErrorMessage;
 
@@ -65,7 +65,8 @@ pub async fn get_user(req: HttpRequest, username: Path<String>) -> impl Responde
             user::get_user_by_id(id).await
         }
     };
-    let user_info = user::get_info(username.0.to_owned()).await;
+    let username = username.into_inner();
+    let user_info = user::get_info(username.to_owned()).await;
     let recent_comment = post::search_comment_content_by_username(&account, &username).await;
     let recent_post = post::search_post_by_username(&account, &username).await;
     let count_tag = user_info.as_ref().unwrap().followed_tag.to_owned().iter().count() as i32;
@@ -100,6 +101,9 @@ pub async fn get_dashboard(req: HttpRequest) -> impl Responder {
             response.insert("tag", bson::to_bson(&tag_list).unwrap());
             let user_list = get_user_list_dashboard(&user.followed_user).await;
             response.insert("following", bson::to_bson(&user_list).unwrap());
+            let summary = dashboard_summary(&user).await;
+            response.insert("summary", bson::to_bson(&summary).unwrap());
+
             HttpResponse::Ok().json(doc! { "data":response})
         }
         Err(err) => { err }
@@ -152,17 +156,18 @@ pub async fn create_list(list: Json<Vec<CreateAccount>>) -> impl Responder {
 pub async fn follow_user_toggle(req: HttpRequest, username_following: Path<String>) -> impl Responder {
     return match check_login(req.to_owned()).await {
         Ok(id) => {
-            match user::follow_user_toggle(id.to_owned(), username_following.0).await {
-                Ok(_) => {
-                    let mut response = doc! {};
-                    let user = get_user_by_id(id).await.unwrap();
-                    let post_list = post::get_post_dashboard(&user).await;
-                    response.insert("post", bson::to_bson(&post_list).unwrap());
-                    let tag_list = post::get_tag_dashboard(&user).await;
-                    response.insert("tag", bson::to_bson(&tag_list).unwrap());
-                    let user_list = get_user_list_dashboard(&user.followed_user).await;
-                    response.insert("following", bson::to_bson(&user_list).unwrap());
-                    HttpResponse::Ok().json(doc! { "data":response})
+            match user::follow_user_toggle(id.to_owned(), username_following.into_inner()).await {
+                Ok(result) => {
+                    // let mut response = doc! {};
+                    // let user = get_user_by_id(id).await.unwrap();
+                    // let post_list = post::get_post_dashboard(&user).await;
+                    // response.insert("post", bson::to_bson(&post_list).unwrap());
+                    // let tag_list = post::get_tag_dashboard(&user).await;
+                    // response.insert("tag", bson::to_bson(&tag_list).unwrap());
+                    // let user_list = get_user_list_dashboard(&user.followed_user).await;
+                    // response.insert("following", bson::to_bson(&user_list).unwrap());
+                    // HttpResponse::Ok().json(doc! { "data":response})
+                    HttpResponse::Ok().json(doc! { "result":result})
                 }
                 Err(err) => {
                     match err {
@@ -211,15 +216,22 @@ pub async fn create_admin(req: HttpRequest, acc: Json<CreateAccount>) -> impl Re
 pub async fn edit_info(req: HttpRequest, account: Json<UpdateAccount>) -> impl Responder {
     return match check_login(req).await {
         Ok(id) => {
-            match user::update_info(&id, account.0).await {
-                Ok(_) => {}
+            let mut response = doc! {};
+            let acc = match user::update_info(&id, account.0).await {
+                Ok(account) => { account }
                 Err(err) => {
                     return match err {
                         _ => { HttpResponse::InternalServerError().json(doc! {"msg":"uncheck exception"}) }
                     };
                 }
-            }
-            let mut response = doc! {};
+            };
+
+            // Remove unused field from AccountStore struct
+            let mut acc_bson = bson::to_bson(&acc).unwrap().as_document().unwrap().to_owned();
+            acc_bson.remove("token");
+            acc_bson.remove("id");
+
+            response.insert("user", acc_bson);
             let user = get_user_by_id(id).await.unwrap();
             let post_list = post::get_post_dashboard(&user).await;
             response.insert("post", bson::to_bson(&post_list).unwrap());

@@ -25,14 +25,13 @@ async fn main() -> std::io::Result<()> {
             .allow_any_method()
             .allow_any_origin()
             .max_age(3600);
-        App::new()
+        App::new().wrap(IdentityService::new(
+            CookieIdentityPolicy::new(&[0; 32])
+                .name("authorization")
+                .secure(false),
+        ))
             .wrap(logger)
             .wrap(cors)
-            .wrap(IdentityService::new(
-                CookieIdentityPolicy::new(&[0; 32])
-                    .name("authorization")
-                    .secure(false),
-            ))
             .data(web::PayloadConfig::new(1 << 25))
             .data(web::JsonConfig::default().limit(1024 * 1024 * 50))
             .route("/login", web::post().to(user_service::login))

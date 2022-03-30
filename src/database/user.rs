@@ -11,7 +11,7 @@ use mongodb::options::FindOneOptions;
 use crate::constant;
 use crate::constant::MONGODB_URL;
 use crate::database::post::connection_post as post_connection;
-use crate::dto::user_dto::{AccountStore, CreateAccount, ShowAccountAdmin, SmallAccount, UpdateAccount};
+use crate::dto::user_dto::{AccountStore, CreateAccount, DashboardSummary, ShowAccountAdmin, SmallAccount, UpdateAccount};
 use crate::error::ErrorMessage;
 use crate::model::user::*;
 
@@ -106,13 +106,17 @@ pub async fn sign_up(account: CreateAccount) -> Result<AccountStore, &'static st
     let now = Utc::now();
     let create_acc = Account {
         id,
-        name: account.name,
+        name: account.name.to_owned(),
         username: account.username.to_owned(),
         school_email: account.school_email,
         private_email: account.private_email,
         bio: if account.bio.is_some() { account.bio.unwrap() } else { "".to_string() },
         password,
-        avatar: if account.avatar.is_some() { account.avatar.unwrap() } else { "".to_string() },
+        avatar: if account.avatar.is_some() { account.avatar.unwrap() } else {
+            let url = "https://ui-avatars.com/api/?background=d90429&color=fff&name=";
+            let name = account.name.replace(' ', "+");
+            url.to_string() + &name
+        },
         admin: false,
         website: if account.website.is_some() { account.website.unwrap() } else { "".to_string() },
         last_access: now,
@@ -134,7 +138,7 @@ pub async fn sign_up(account: CreateAccount) -> Result<AccountStore, &'static st
     log_in(account.username, account.password).await
 }
 
-pub async fn create_admin(account: CreateAccount) -> Result<AccountStore, ErrorMessage> {
+pub async fn create_admin(account: CreateAccount) -> Result<Vec<ShowAccountAdmin>, ErrorMessage> {
     let col = connect().await;
     if check_username_duplicate(&account.username).await {
         return Err(ErrorMessage::Duplicate);
@@ -168,7 +172,7 @@ pub async fn create_admin(account: CreateAccount) -> Result<AccountStore, ErrorM
         followed_user: vec![],
     };
     return match col.insert_one(create_acc, None).await {
-        Ok(_) => { Ok(log_in(account.username, account.password).await.unwrap()) }
+        Ok(_) => { Ok(get_users().await) }
         Err(_) => { Err(ErrorMessage::ServerError) }
     };
 }
@@ -245,7 +249,7 @@ pub async fn get_user_full(id: i32) -> Account {
     return col.find_one(doc! {"_id":id}, None).await.unwrap().unwrap();
 }
 
-pub async fn follow_user_toggle(user_id: i32, username_follow: String) -> Result<(), ErrorMessage> {
+pub async fn follow_user_toggle(user_id: i32, username_follow: String) -> Result<bool, ErrorMessage> {
     let col = connect().await;
     let user_follow = col.find_one(doc! {"username":username_follow}, None).await.unwrap();
     return match user_follow {
@@ -254,24 +258,23 @@ pub async fn follow_user_toggle(user_id: i32, username_follow: String) -> Result
         }
         Some(user_follower) => {
             let follower = col.find_one(doc! {"_id":&user_id}, None).await.unwrap().unwrap();
-            if follower.followed_user.contains(&user_follower.id) {
+            return if follower.followed_user.contains(&user_follower.id) {
                 match col.update_one(doc! {"_id":user_id}, doc! {"$pull":{"followedUser":user_follower.id}}, None).await {
-                    Ok(_) => {}
-                    Err(_) => { return Err(ErrorMessage::ServerError); }
+                    Ok(_) => { Ok(false) }
+                    Err(_) => { Err(ErrorMessage::ServerError) }
                 }
             } else {
                 match col.update_one(doc! {"_id":user_id}, doc! {"$push":{"followedUser":user_follower.id}}, None).await {
-                    Ok(_) => {}
-                    Err(_) => { return Err(ErrorMessage::ServerError); }
+                    Ok(_) => { Ok(true) }
+                    Err(_) => { Err(ErrorMessage::ServerError) }
                 }
-            }
-            Ok(())
+            };
         }
     };
 }
 
 
-pub async fn update_info(user_id: &i32, acc_update: UpdateAccount) -> Result<(), ErrorMessage> {
+pub async fn update_info(user_id: &i32, acc_update: UpdateAccount) -> Result<AccountStore, ErrorMessage> {
     let col = connect().await;
     let user_opt = col.find_one(doc! {"_id":user_id}, None).await.unwrap();
     return match user_opt {
@@ -302,8 +305,11 @@ pub async fn update_info(user_id: &i32, acc_update: UpdateAccount) -> Result<(),
             }
             if acc_update.bio.is_some() { acc.bio = acc_update.bio.unwrap() }
             if acc_update.website.is_some() { acc.website = acc_update.website.unwrap() }
-            match col.replace_one(doc! {"_id":user_id}, &acc, None).await {
-                Ok(_) => { Ok(()) }
+            match col.replace_one(doc! {"_id":&user_id}, &acc, None).await {
+                Ok(_) => {
+                    let usr = col.find_one(doc! {"_id":&user_id}, None).await.unwrap().unwrap();
+                    return Ok(AccountStore::from(usr));
+                }
                 Err(_) => { Err(ErrorMessage::ServerError) }
             }
         }
@@ -317,4 +323,20 @@ async fn check_username_duplicate(username: &String) -> bool {
         None => { false }
         Some(_) => { true }
     };
+}
+
+
+pub async fn dashboard_summary(user: &Account) -> DashboardSummary {
+    let col = connect().await;
+    let post_col = post_connection().await;
+    let follower = col.count_documents(doc! {"followedUser":user.id}, None).await.unwrap() as u32;
+    let saved = user.reading_list.to_owned().iter().count() as u32;
+    let commented = post_col.count_documents(doc! {"comment.userUserName":&user.username}, None).await.unwrap() as u32;
+    let posted = post_col.count_documents(doc! {"userUserName":&user.username}, None).await.unwrap() as u32;
+    DashboardSummary {
+        posted,
+        follower,
+        saved,
+        commented,
+    }
 }
