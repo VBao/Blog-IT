@@ -11,7 +11,7 @@ use mongodb::options::FindOneOptions;
 use crate::constant;
 use crate::constant::MONGODB_URL;
 use crate::database::post::connection_post as post_connection;
-use crate::dto::user_dto::{AccountStore, CreateAccount, ShowAccountAdmin, SmallAccount, UpdateAccount};
+use crate::dto::user_dto::{AccountStore, CreateAccount, DashboardSummary, ShowAccountAdmin, SmallAccount, UpdateAccount};
 use crate::error::ErrorMessage;
 use crate::model::user::*;
 
@@ -323,4 +323,20 @@ async fn check_username_duplicate(username: &String) -> bool {
         None => { false }
         Some(_) => { true }
     };
+}
+
+
+pub async fn dashboard_summary(user: &Account) -> DashboardSummary {
+    let col = connect().await;
+    let post_col = post_connection().await;
+    let follower = col.count_documents(doc! {"followedUser":user.id}, None).await.unwrap() as u32;
+    let saved = user.reading_list.to_owned().iter().count() as u32;
+    let commented = post_col.count_documents(doc! {"comment.userUserName":&user.username}, None).await.unwrap() as u32;
+    let posted = post_col.count_documents(doc! {"userUserName":&user.username}, None).await.unwrap() as u32;
+    DashboardSummary {
+        posted,
+        follower,
+        saved,
+        commented,
+    }
 }

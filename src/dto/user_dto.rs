@@ -160,3 +160,11 @@ impl From<Account> for PostDetailUser {
         }
     }
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct DashboardSummary {
+    pub posted: u32,
+    pub follower: u32,
+    pub saved: u32,
+    pub commented: u32,
+}

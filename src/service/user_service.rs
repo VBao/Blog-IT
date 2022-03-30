@@ -6,7 +6,7 @@ use serde::Deserialize;
 
 use crate::database::post;
 use crate::database::user;
-use crate::database::user::{get_user_by_id, get_user_full, get_user_list_dashboard};
+use crate::database::user::{dashboard_summary, get_user_by_id, get_user_full, get_user_list_dashboard};
 use crate::dto::user_dto::{CreateAccount, UpdateAccount, UserPage};
 use crate::error::ErrorMessage;
 
@@ -101,9 +101,8 @@ pub async fn get_dashboard(req: HttpRequest) -> impl Responder {
             response.insert("tag", bson::to_bson(&tag_list).unwrap());
             let user_list = get_user_list_dashboard(&user.followed_user).await;
             response.insert("following", bson::to_bson(&user_list).unwrap());
-
-            let mut overview = doc! {};
-            // overview.insert(;
+            let summary = dashboard_summary(&user).await;
+            response.insert("summary", bson::to_bson(&summary).unwrap());
 
             HttpResponse::Ok().json(doc! { "data":response})
         }
