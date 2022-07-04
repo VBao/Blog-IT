@@ -1,0 +1,90 @@
+[{
+  "_id": 3,
+  "name": "Son Hanh",
+  "username": "sonhanh",
+  "bio": "Something about me",
+  "password": "$argon2i$v=19$m=4096,t=3,p=1$cjVzQXh5R3BRLXZC$wmHCDu9VcKXNXSFepYmnOXZOU0imkNqIe7TWN132TYI",
+  "avatar": "some_url",
+  "admin": false,
+  "schoolEmail": "sonhanh@vanlanguni.vn",
+  "privateEmail": "sonhanh@gmail.com",
+  "website": "url",
+  "lastAccess": {
+    "$date": "2021-09-24T08:42:18.282Z"
+  },
+  "createdAt": {
+    "$date": "2021-09-24T08:42:18.282Z"
+  },
+  "updatedAt": {
+    "$date": "2021-09-24T08:42:18.282Z"
+  },
+  "status": "Activated",
+  "followedTag": [
+    3
+  ],
+  "followedUser": [
+    2
+  ],
+  "readingList": [
+    3,
+    4
+  ]
+},{
+  "_id": 1,
+  "name": "Luu Ad",
+  "username": "admin123456",
+  "bio": "Something about me",
+  "password": "$argon2i$v=19$m=4096,t=3,p=1$cjVzQXh5R3BRLXZC$6uuTwD4j3aTWBj3I2dpj5cGSabjjhZN5O83mApQR6Ag",
+  "avatar": "some_url",
+  "schoolEmail": "admin@vanlanguni.vn",
+  "privateEmail": "admin@gmail.com",
+  "website": "url",
+  "lastAccess": {
+    "$date": "2021-09-24T08:42:18.282Z"
+  },
+  "createdAt": {
+    "$date": "2021-09-24T08:42:18.282Z"
+  },
+  "updatedAt": {
+    "$date": "2021-09-24T08:42:18.282Z"
+  },
+  "admin": true,
+  "status": "Activated",
+  "followedTag": [
+    2,
+    6,
+    9
+  ],
+  "followedUser": [
+    2
+  ],
+  "readingList": []
+},{
+  "_id": 2,
+  "name": "Huge Jackman",
+  "username": "ahihi",
+  "bio": "Something about me",
+  "password": "$argon2i$v=19$m=4096,t=3,p=1$cjVzQXh5R3BRLXZC$dY0V4nv2qzVTm/mDl3gAxnjUc1wgpyqtDMUuJ0rsJT0",
+  "avatar": "some_url",
+  "admin": false,
+  "schoolEmail": "blabla@vanlanguni.vn",
+  "privateEmail": "huge@gmail.com",
+  "website": "url",
+  "lastAccess": {
+    "$date": "2021-09-24T08:42:18.282Z"
+  },
+  "createdAt": {
+    "$date": "2021-09-24T08:42:18.282Z"
+  },
+  "updatedAt": {
+    "$date": "2021-09-24T08:42:18.282Z"
+  },
+  "status": "Activated",
+  "followedTag": [
+    14,
+    12,
+    11
+  ],
+  "followedUser": [],
+  "readingList": []
+}]

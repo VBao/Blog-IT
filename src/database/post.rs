@@ -10,7 +10,7 @@ use rand::{Rng, thread_rng};
 use rand::distributions::Alphanumeric;
 use slug::slugify;
 
-use crate::constant::MONGODB_URL;
+use crate::constant::{MONGODB_URL, DATABASE_NAME};
 use crate::database::tag;
 use crate::database::user::{connect as connect_user, get_user_by_id};
 use crate::dto::post_dto::{CommentDetail, CommentInfoPage, CreateComment, CreatePost, Index, MorePost, PostDetail, PostDetailComment, PostDetailPage, ShortPost, ShortPostAdmin, UpdateComment, UpdatePost};
@@ -25,7 +25,7 @@ pub async fn connection_post() -> Collection<Post> {
     let mut conn = ClientOptions::parse(MONGODB_URL).await.unwrap();
     conn.app_name = Some("My App".to_string());
     let client = Client::with_options(conn).unwrap();
-    let db = client.database("test");
+    let db = client.database(DATABASE_NAME);
     db.collection::<Post>("post")
 }
 

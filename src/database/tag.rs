@@ -5,6 +5,7 @@ use futures::TryStreamExt;
 use mongodb::{bson::doc, Client, options::ClientOptions};
 use mongodb::options::{FindOneOptions, FindOptions};
 
+use crate::constant::{MONGODB_URL, DATABASE_NAME};
 use crate::database::user::connect as connect_user;
 use crate::database::user::get_user_by_id;
 use crate::dto::tag_dto::{CreateTag, IndexTag, ShortTag, TagAdmin, TagList, TagPage, UpdateTag};
@@ -13,10 +14,10 @@ use crate::error::ErrorMessage;
 use crate::model::tag::Tag;
 
 async fn connect() -> mongodb::Collection<Tag> {
-    let mut conn = ClientOptions::parse("mongodb://admin:Lj6kuxGJh&k8CaN6UgsQF+aDVkQF3Wn7hdSeXke@localhost:27017/").await.unwrap();
+    let mut conn = ClientOptions::parse(MONGODB_URL).await.unwrap();
     conn.app_name = Some("My App".to_string());
     let client: Client = Client::with_options(conn).unwrap();
-    let db = client.database("test");
+    let db = client.database(DATABASE_NAME);
     db.collection::<Tag>("tag")
 }
 

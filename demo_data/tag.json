@@ -1,0 +1,74 @@
+[
+  {
+    "_id": 1,
+    "value": "javascript",
+    "desc": "desc",
+    "color": "#4e2b63",
+    "image": "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftse4.mm.bing.net%2Fth%3Fid%3DOIP.PHBTJoshbg880IH9z_PB6QHaHa%26pid%3DApi&f=1",
+    "post": 5,
+    "moderator": []
+  },
+  {
+    "_id": 2,
+    "value": "react",
+    "desc": "desc",
+    "color": "#984aeb",
+    "image": "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftse1.mm.bing.net%2Fth%3Fid%3DOIP.POlEUykrCKbSrs41tAlHvgHaHa%26pid%3DApi&f=1",
+    "post": 5,
+    "moderator": []
+  },
+  {
+    "_id": 3,
+    "value": "python",
+    "desc": "desc",
+    "color": "#97e294",
+    "image": "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftse4.mm.bing.net%2Fth%3Fid%3DOIP.TMT7cMMeRBiBHnnX_WJP-gHaE8%26pid%3DApi&f=1",
+    "post": 0,
+    "moderator": []
+  },
+  {
+    "_id": 4,
+    "value": "java",
+    "desc": "desc",
+    "color": "#8886aa",
+    "image": "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftse3.mm.bing.net%2Fth%3Fid%3DOIP.A2Zm5dIzR-bNolG-v-3BywFZC1%26pid%3DApi&f=1",
+    "post": 0,
+    "moderator": []
+  },
+  {
+    "_id": 5,
+    "value": "html",
+    "desc": "desc",
+    "color": "#2f35b7",
+    "image": "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftse4.mm.bing.net%2Fth%3Fid%3DOIP.thT5oFZQ6blt7EeQweU7-gHaD_%26pid%3DApi&f=1",
+    "post": 0,
+    "moderator": []
+  },
+  {
+    "_id": 6,
+    "value": "node",
+    "desc": "desc",
+    "color": "#be81d5",
+    "image": "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftse2.mm.bing.net%2Fth%3Fid%3DOIP.xQJlilCdJ7U2ebPvc8DYLwHaIJ%26pid%3DApi&f=1",
+    "post": 5,
+    "moderator": []
+  },
+  {
+    "_id": 7,
+    "value": "kotlin",
+    "desc": "desc",
+    "color": "#be5b10",
+    "image": "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftse1.mm.bing.net%2Fth%3Fid%3DOIP.D2ppCycgCvm90WV3CNIM-AHaHa%26pid%3DApi&f=1",
+    "post": 0,
+    "moderator": []
+  },
+  {
+    "_id": 8,
+    "value": "typescript",
+    "desc": "desc",
+    "color": "#9a9d77",
+    "image": "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftse4.mm.bing.net%2Fth%3Fid%3DOIP.heUp7eiwOi4N40vs6zWf1wHaI5%26pid%3DApi&f=1",
+    "post": 0,
+    "moderator": []
+  }
+]

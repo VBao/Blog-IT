@@ -1,0 +1,507 @@
+[{
+  "_id": 2,
+  "userUserName": "sonhanh",
+  "userAvatar": "some_url",
+  "userName": "Son Hanh",
+  "banner": "https://res.cloudinary.com/practicaldev/image/fetch/s--WNpip7k8--/c_imagga_scale,f_auto,fl_progressive,h_420,q_auto,w_1000/https://dev-to-uploads.s3.amazonaws.com/uploads/articles/yz8tinfnefxmwt5m8xcg.png",
+  "title": "Learn Javascript Reduce method with 5 examples",
+  "content": "Html or any thing",
+  "slug": "Use-for-url1",
+  "updatedAt": {
+    "$date": "2021-09-24T08:42:18.282Z"
+  },
+  "createdAt": {
+    "$date": "2021-09-23T08:42:18.282Z"
+  },
+  "status": "Published",
+  "tag": [
+    "javascript",
+    "node",
+    "react"
+  ],
+  "comment": [
+    {
+      "userUserName": "sonhanh",
+      "userAvatar": "some_url",
+      "userName": "Son Hanh",
+      "_id": 1,
+      "createdAt": {
+        "$date": "2021-09-23T08:42:18.282Z"
+      },
+      "updatedAt": {
+        "$date": "2021-09-23T08:42:18.282Z"
+      },
+      "content": "This is a parent block comment",
+      "interact": 0,
+      "parentId": 0,
+      "interactList": []
+    },
+    {
+      "userUserName": "sonhanh",
+      "userAvatar": "some_url",
+      "userName": "Son Hanh",
+      "_id": 2,
+      "content": "This is a child block comment",
+      "createdAt": {
+        "$date": "2021-09-23T08:42:18.282Z"
+      },
+      "updatedAt": {
+        "$date": "2021-09-23T08:42:18.282Z"
+      },
+      "interact": 0,
+      "parentId": 1,
+      "interactList": []
+    },
+    {
+      "userUserName": "sonhanh",
+      "userAvatar": "some_url",
+      "userName": "Son Hanh",
+      "_id": 3,
+      "content": "This is a parent block comment",
+      "createdAt": {
+        "$date": "2021-09-23T08:42:18.282Z"
+      },
+      "updatedAt": {
+        "$date": "2021-09-23T08:42:18.282Z"
+      },
+      "interact": 0,
+      "parentId": 2,
+      "interactList": []
+    },
+    {
+      "userUserName": "sonhanh",
+      "userAvatar": "some_url",
+      "userName": "Son Hanh",
+      "_id": 4,
+      "content": "This is a child block comment",
+      "createdAt": {
+        "$date": "2021-09-23T08:42:18.282Z"
+      },
+      "updatedAt": {
+        "$date": "2021-09-23T08:42:18.282Z"
+      },
+      "interact": 0,
+      "parentId": 0,
+      "interactList": []
+    }
+  ],
+  "commentCount": 4,
+  "reactionCount": 2,
+  "reactionList": [
+    1,
+    3
+  ],
+  "savedByUser": [],
+  "commentList": [
+    3
+  ]
+},{
+  "_id": 1,
+  "userUserName": "sonhanh",
+  "userAvatar": "some_url",
+  "userName": "Son Hanh",
+  "banner": "https://res.cloudinary.com/practicaldev/image/fetch/s--WNpip7k8--/c_imagga_scale,f_auto,fl_progressive,h_420,q_auto,w_1000/https://dev-to-uploads.s3.amazonaws.com/uploads/articles/yz8tinfnefxmwt5m8xcg.png",
+  "title": "Learn Javascript Reduce method with 5 examples",
+  "content": "Html or any thing",
+  "slug": "Use-for-url2",
+  "createdAt": {
+    "$date": "2021-09-23T08:42:18.282Z"
+  },
+  "updatedAt": {
+    "$date": "2021-09-24T08:42:18.282Z"
+  },
+  "status": "Published",
+  "tag": [
+    "javascript",
+    "node",
+    "react"
+  ],
+  "reactionList": [
+    1,
+    3
+  ],
+  "comment": [
+    {
+      "_id": 1,
+      "content": "This is a parent block comment",
+      "userUserName": "sonhanh",
+      "userAvatar": "some_url",
+      "userName": "Son Hanh",
+      "createdAt": {
+        "$date": "2021-09-23T08:42:18.282Z"
+      },
+      "updatedAt": {
+        "$date": "2021-09-23T08:42:18.282Z"
+      },
+      "interact": 0,
+      "parentId": 0,
+      "interactList": []
+    },
+    {
+      "_id": 2,
+      "content": "This is a child block comment",
+      "userUserName": "sonhanh",
+      "userAvatar": "some_url",
+      "userName": "Son Hanh",
+      "createdAt": {
+        "$date": "2021-09-23T08:42:18.282Z"
+      },
+      "updatedAt": {
+        "$date": "2021-09-23T08:42:18.282Z"
+      },
+      "interact": 0,
+      "parentId": 1,
+      "interactList": []
+    },
+    {
+      "_id": 3,
+      "content": "This is a parent block comment",
+      "userUserName": "sonhanh",
+      "userAvatar": "some_url",
+      "userName": "Son Hanh",
+      "createdAt": {
+        "$date": "2021-09-23T08:42:18.282Z"
+      },
+      "updatedAt": {
+        "$date": "2021-09-23T08:42:18.282Z"
+      },
+      "interact": 0,
+      "parentId": 2,
+      "interactList": []
+    },
+    {
+      "_id": 4,
+      "content": "This is a child block comment",
+      "userUserName": "sonhanh",
+      "userAvatar": "some_url",
+      "userName": "Son Hanh",
+      "createdAt": {
+        "$date": "2021-09-23T08:42:18.282Z"
+      },
+      "updatedAt": {
+        "$date": "2021-09-23T08:42:18.282Z"
+      },
+      "interact": 0,
+      "parentId": 0,
+      "interactList": []
+    },
+    {
+      "_id": 5,
+      "content": "This is a test comment",
+      "userUserName": "sonhanh",
+      "userAvatar": "some_url",
+      "userName": "Son Hanh",
+      "createdAt": {
+        "$date": "2021-10-31T12:03:49.796Z"
+      },
+      "updatedAt": {
+        "$date": "2021-09-23T08:42:18.282Z"
+      },
+      "interact": 0,
+      "parentId": 0,
+      "interactList": []
+    },
+    {
+      "_id": 6,
+      "content": "This is a test comment",
+      "userUserName": "sonhanh",
+      "userAvatar": "some_url",
+      "userName": "Son Hanh",
+      "createdAt": {
+        "$date": "2021-10-31T12:05:00.612Z"
+      },
+      "updatedAt": {
+        "$date": "2021-09-23T08:42:18.282Z"
+      },
+      "interact": 0,
+      "parentId": 0,
+      "interactList": []
+    },
+    {
+      "_id": 7,
+      "content": "This is a test child comment",
+      "userUserName": "sonhanh",
+      "userAvatar": "some_url",
+      "userName": "Son Hanh",
+      "createdAt": {
+        "$date": "2021-10-31T12:08:14.404Z"
+      },
+      "updatedAt": {
+        "$date": "2021-09-23T08:42:18.282Z"
+      },
+      "interact": 0,
+      "parentId": 5,
+      "interactList": []
+    }
+  ],
+  "commentCount": 7,
+  "reactionCount": 2,
+  "savedByUser": [],
+  "commentList": [
+    3
+  ]
+},{
+  "_id": 3,
+  "userUserName": "sonhanh",
+  "userAvatar": "some_url",
+  "userName": "Son Hanh",
+  "slug": "Use-for-url3",
+  "banner": "String",
+  "title": "String",
+  "content": "This is a first edited comment",
+  "createdAt": {
+    "$date": "2021-10-31T12:06:18.237Z"
+  },
+  "updatedAt": {
+    "$date": "2021-11-05T10:01:13.861Z"
+  },
+  "status": "Published",
+  "tag": [
+    "javascript",
+    "node",
+    "react"
+  ],
+  "comment": [
+    {
+      "_id": 1,
+      "content": "This is a new comment",
+      "userUserName": "sonhanh",
+      "userAvatar": "some_url",
+      "userName": "Son Hanh",
+      "createdAt": {
+        "$date": "2021-11-04T17:02:20.389Z"
+      },
+      "updatedAt": {
+        "$date": "2021-11-04T17:02:20.389Z"
+      },
+      "interact": 1,
+      "parentId": 0,
+      "interactList": []
+    },
+    {
+      "_id": 2,
+      "content": "This is a edited comment",
+      "userUserName": "sonhanh",
+      "userAvatar": "some_url",
+      "userName": "Son Hanh",
+      "createdAt": {
+        "$date": "2021-11-05T01:56:47.978Z"
+      },
+      "updatedAt": {
+        "$date": "2021-11-05T01:56:47.978Z"
+      },
+      "interact": 0,
+      "parentId": 0,
+      "interactList": []
+    },
+    {
+      "_id": 3,
+      "content": "This is a 3rd comment",
+      "userUserName": "sonhanh",
+      "userAvatar": "some_url",
+      "userName": "Son Hanh",
+      "createdAt": {
+        "$date": "2021-11-05T01:58:16.124Z"
+      },
+      "updatedAt": {
+        "$date": "2021-11-05T01:58:16.124Z"
+      },
+      "interact": 0,
+      "parentId": 0,
+      "interactList": []
+    },
+    {
+      "_id": 4,
+      "content": "This is a child comment",
+      "userUserName": "sonhanh",
+      "userAvatar": "some_url",
+      "userName": "Son Hanh",
+      "createdAt": {
+        "$date": "2021-11-05T01:58:24.191Z"
+      },
+      "updatedAt": {
+        "$date": "2021-11-05T01:58:24.191Z"
+      },
+      "interact": 0,
+      "parentId": 1,
+      "interactList": []
+    },
+    {
+      "_id": 5,
+      "content": "This is a child comment",
+      "userUserName": "sonhanh",
+      "userAvatar": "some_url",
+      "userName": "Son Hanh",
+      "createdAt": {
+        "$date": "2021-11-12T11:29:33.956Z"
+      },
+      "updatedAt": {
+        "$date": "2021-11-12T11:29:33.956Z"
+      },
+      "interact": 0,
+      "parentId": 1,
+      "interactList": []
+    },
+    {
+      "_id": 6,
+      "content": "This is a child comment",
+      "userUserName": "sonhanh",
+      "userAvatar": "some_url",
+      "userName": "Son Hanh",
+      "createdAt": {
+        "$date": "2021-11-12T11:29:42.181Z"
+      },
+      "updatedAt": {
+        "$date": "2021-11-12T11:29:42.181Z"
+      },
+      "interact": 0,
+      "parentId": 1,
+      "interactList": []
+    },
+    {
+      "_id": 7,
+      "content": "This is a child comment",
+      "userUserName": "sonhanh",
+      "userAvatar": "some_url",
+      "userName": "Son Hanh",
+      "createdAt": {
+        "$date": "2021-11-12T12:56:43.946Z"
+      },
+      "updatedAt": {
+        "$date": "2021-11-12T12:56:43.946Z"
+      },
+      "interact": 0,
+      "parentId": 1,
+      "interactList": []
+    },
+    {
+      "_id": 8,
+      "content": "This is a child comment",
+      "userUserName": "sonhanh",
+      "userAvatar": "some_url",
+      "userName": "Son Hanh",
+      "createdAt": {
+        "$date": "2021-11-12T15:20:31.022Z"
+      },
+      "updatedAt": {
+        "$date": "2021-11-12T15:20:31.022Z"
+      },
+      "interact": 0,
+      "parentId": 1,
+      "interactList": []
+    },
+    {
+      "_id": 9,
+      "content": "This is a child comment",
+      "userUserName": "sonhanh",
+      "userAvatar": "some_url",
+      "userName": "Son Hanh",
+      "createdAt": {
+        "$date": "2021-11-12T15:51:46.864Z"
+      },
+      "updatedAt": {
+        "$date": "2021-11-12T15:51:46.864Z"
+      },
+      "interact": 0,
+      "parentId": 1,
+      "interactList": []
+    },
+    {
+      "_id": 10,
+      "content": "This is a child comment",
+      "userUserName": "sonhanh",
+      "userAvatar": "some_url",
+      "userName": "Son Hanh",
+      "createdAt": {
+        "$date": "2021-11-12T15:51:55.599Z"
+      },
+      "updatedAt": {
+        "$date": "2021-11-12T15:51:55.599Z"
+      },
+      "interact": 0,
+      "parentId": 2,
+      "interactList": []
+    }
+  ],
+  "commentCount": 10,
+  "reactionCount": 0,
+  "reactionList": [],
+  "commentList": [
+    3
+  ],
+  "savedByUser": []
+},{
+  "_id": 6,
+  "userUserName": "sonhanh",
+  "userAvatar": "some_url",
+  "userName": "Son Hanh",
+  "slug": "stringsonhanhQXIevMBmJjpe7sXO0QH4xRa3f4pjJJ",
+  "banner": "String",
+  "title": "String",
+  "content": "String",
+  "createdAt": {
+    "$date": "2021-11-12T11:30:01.281Z"
+  },
+  "updatedAt": {
+    "$date": "2021-11-12T11:30:01.281Z"
+  },
+  "status": "Published",
+  "tag": [
+    "String",
+    "Strang",
+    "Strong"
+  ],
+  "comment": [],
+  "commentCount": 0,
+  "reactionCount": 0,
+  "reactionList": [],
+  "commentList": [],
+  "savedByUser": []
+},{
+  "_id": 7,
+  "userUserName": "sonhanh",
+  "userAvatar": "some_url",
+  "userName": "Son Hanh",
+  "slug": "test-post-1sonhanh2PWYzqdF87uL4QTbEkmqAmfy2YvVig",
+  "banner": "Test post 1",
+  "title": "Test post 1",
+  "content": "Test post 1",
+  "createdAt": {
+    "$date": "2021-12-14T15:14:36.701Z"
+  },
+  "updatedAt": {
+    "$date": "2021-12-14T15:14:36.701Z"
+  },
+  "status": "Published",
+  "tag": [
+    "react",
+    "javascript"
+  ],
+  "comment": [
+    {
+      "_id": 1,
+      "content": "This is a second edited first comment update",
+      "userUserName": "sonhanh",
+      "userAvatar": "some_url",
+      "userName": "Son Hanh",
+      "createdAt": {
+        "$date": "2021-12-14T16:01:57.952Z"
+      },
+      "updatedAt": {
+        "$date": "2021-12-15T15:13:53.691Z"
+      },
+      "interact": 0,
+      "parentId": 0,
+      "interactList": []
+    }
+  ],
+  "commentCount": 1,
+  "reactionCount": 1,
+  "reactionList": [
+    3
+  ],
+  "commentList": [
+    3
+  ],
+  "savedByUser": []
+}]

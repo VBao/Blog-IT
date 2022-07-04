@@ -8,7 +8,7 @@ use jsonwebtoken::{Algorithm, decode, DecodingKey, encode, EncodingKey, Header, 
 use mongodb::{bson::doc, Client, options::ClientOptions};
 use mongodb::options::FindOneOptions;
 
-use crate::constant;
+use crate::constant::{self, DATABASE_NAME};
 use crate::constant::MONGODB_URL;
 use crate::database::post::connection_post as post_connection;
 use crate::dto::user_dto::{AccountStore, CreateAccount, DashboardSummary, ShowAccountAdmin, SmallAccount, UpdateAccount};
@@ -21,7 +21,7 @@ pub async fn connect() -> mongodb::Collection<Account> {
     let mut conn = ClientOptions::parse(MONGODB_URL).await.unwrap();
     conn.app_name = Some("My App".to_string());
     let client = Client::with_options(conn).unwrap();
-    let db = client.database("test");
+    let db = client.database(DATABASE_NAME);
     db.collection::<Account>("user")
 }
 
